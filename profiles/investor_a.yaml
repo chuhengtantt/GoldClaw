@@ -1,0 +1,35 @@
+# Investor A — CFD 1:20 趋势收割者
+# 工具: CFD 做多或做空
+# 杠杆: 20x
+# 仓位: 同一时间最多 1 个 CFD 仓位
+
+investor_id: "A"
+name: "趋势收割者"
+description: "CFD 1:20 杠杆，做多或做空黄金，趋势跟踪"
+
+instruments:
+  - cfd_long
+  - cfd_short
+
+leverage: 20
+
+fees:
+  spread_pct: 0.01          # margin × 1%
+  overnight_pct: 0.0082     # margin × 0.82% × nights_held
+  fx_pct: 0.005             # abs(名义盈亏) × 0.5%
+
+pnl_formulas:
+  long:
+    actual_margin: "margin - spread"
+    nominal_exposure: "actual_margin × leverage"
+    nominal_pnl: "nominal_exposure × (current_price - entry_price) / entry_price"
+    net_pnl: "nominal_pnl - overnight_interest - fx_fee"
+  short:
+    actual_margin: "margin - spread"
+    nominal_exposure: "actual_margin × leverage"
+    nominal_pnl: "nominal_exposure × (entry_price - current_price) / entry_price"
+    net_pnl: "nominal_pnl - overnight_interest - fx_fee"
+
+constraints:
+  max_positions: 1
+  has_tp_sl: true

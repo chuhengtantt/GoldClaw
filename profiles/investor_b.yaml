@@ -1,0 +1,41 @@
+# Investor B — SGLN 防御性狙击手
+# 工具: CFD 做空或 SGLN 做多（二选一，互斥）
+# 杠杆: CFD 20x，SGLN 无杠杆
+
+investor_id: "B"
+name: "防御性狙击手"
+description: "CFD 做空 或 SGLN 做多，同一时间只持有一种仓位"
+
+instruments:
+  - cfd_short
+  - sgln_long
+
+leverage:
+  cfd: 20
+  sgln: 1
+
+fees:
+  cfd:
+    spread_pct: 0.01          # margin × 1%
+    overnight_pct: 0.0082     # margin × 0.82% × nights_held
+    fx_pct: 0.005             # abs(名义盈亏) × 0.5%
+  sgln:
+    spread_pct: 0.0           # 无交易成本
+    overnight_pct: 0.0
+    fx_pct: 0.0
+
+pnl_formulas:
+  cfd_short:
+    actual_margin: "margin - spread"
+    nominal_exposure: "actual_margin × leverage"
+    nominal_pnl: "nominal_exposure × (entry_price - current_price) / entry_price"
+    net_pnl: "nominal_pnl - overnight_interest - fx_fee"
+  sgln_long:
+    pnl: "investment × (current_gold_price / entry_gold_price - 1)"
+    net_pnl: "pnl"  # 无费用
+
+constraints:
+  max_positions: 1
+  mutual_exclusive: true  # CFD 空头 和 SGLN 多头互斥
+  cfd_has_tp_sl: true
+  sgln_has_tp_sl: false   # SGLN 不设 TP/SL
