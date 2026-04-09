@@ -65,7 +65,7 @@ def build_state_report(
                 margin_committed=row["margin_committed"],
                 current_action=row["current_action"],
                 entry_price=row["entry_price"],
-                current_price=row["current_price"],
+                current_price=row["current_price"] or gold_price,
                 tp=row["tp"],
                 sl=row["sl"],
                 nominal_pnl=row["nominal_pnl"],
