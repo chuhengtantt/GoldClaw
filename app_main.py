@@ -31,9 +31,11 @@ def main():
 
     # 切换到正确的工作目录（PyInstaller bundle）
     if getattr(sys, 'frozen', False):
-        # sys._MEIPASS 指向 _internal/ 目录（代码资源）
-        base = getattr(sys, '_MEIPASS', os.path.dirname(sys.executable))
-        if ".app/Contents/MacOS" in os.path.dirname(sys.executable):
+        # Launcher 脚本 exec Resources/GoldClaw，所以 sys.executable
+        # 在 Contents/Resources/ 而非 Contents/MacOS/
+        exe_dir = os.path.dirname(os.path.abspath(sys.executable))
+        is_app_bundle = ".app/Contents" in exe_dir
+        if is_app_bundle:
             # .app bundle: data 目录放在用户可见的位置
             # ~/GoldClaw/ 方便 OpenClaw 访问
             user_data = os.path.expanduser("~/GoldClaw")
@@ -41,7 +43,7 @@ def main():
             os.chdir(user_data)
             logger.info("Data dir: %s", user_data)
         else:
-            os.chdir(os.path.dirname(sys.executable))
+            os.chdir(exe_dir)
 
     logger.info("GoldClaw starting...")
     logger.info("Working dir: %s", os.getcwd())
