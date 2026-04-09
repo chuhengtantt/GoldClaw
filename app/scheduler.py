@@ -24,6 +24,8 @@ class GoldClawScheduler:
         self._engine = engine
         self._scheduler = BackgroundScheduler()
         self._current_interval = settings.schedule_interval_idle
+        self._idle_interval = settings.schedule_interval_idle
+        self._watch_interval = settings.schedule_interval_watch
         self._job_id = "goldclaw_tick"
 
     def start(self) -> None:
@@ -52,17 +54,30 @@ class GoldClawScheduler:
         state = self._engine.system_state
 
         if state == SystemState.WATCH:
-            target = settings.schedule_interval_watch
+            target = self._watch_interval
         else:
-            target = settings.schedule_interval_idle
+            target = self._idle_interval
 
         if target != self._current_interval:
-            self._current_interval = target
-            self._scheduler.reschedule_job(
-                self._job_id,
-                trigger=IntervalTrigger(minutes=target),
-            )
-            logger.info("Scheduler rescheduled: interval=%d min", target)
+            self._reschedule(target)
+
+    def _reschedule(self, minutes: int) -> None:
+        """重新设定调度间隔。"""
+        self._current_interval = minutes
+        self._scheduler.reschedule_job(
+            self._job_id,
+            trigger=IntervalTrigger(minutes=minutes),
+        )
+        logger.info("Scheduler rescheduled: interval=%d min", minutes)
+
+    def update_intervals(self, idle_min: int, watch_min: int) -> None:
+        """外部调用：更新调度频率并立即生效。"""
+        self._idle_interval = idle_min
+        self._watch_interval = watch_min
+        state = self._engine.system_state
+        target = watch_min if state == SystemState.WATCH else idle_min
+        if target != self._current_interval:
+            self._reschedule(target)
 
     def shutdown(self) -> None:
         """关闭调度器。"""

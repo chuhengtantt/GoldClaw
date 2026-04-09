@@ -99,6 +99,13 @@ MIGRATIONS = [
     );
     CREATE INDEX IF NOT EXISTS idx_comm_log_time ON comm_log(created_at);
     """,
+    """
+    CREATE TABLE IF NOT EXISTS runtime_config (
+        key   TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    );
+    """,
 ]
 
 

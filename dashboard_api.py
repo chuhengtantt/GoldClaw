@@ -182,6 +182,24 @@ async def get_comm_log(
         _close_conn(repo)
 
 
+@app.get("/api/comm/summary")
+async def get_comm_summary(
+    range: str = Query("week", pattern="^(week|month)$"),
+):
+    """通讯日志按天聚合。range: week | month。返回每天的 GC→OC / OC→GC 计数。"""
+    repo = _get_repo()
+    try:
+        now = datetime.now(timezone.utc)
+        if range == "week":
+            since = (now - timedelta(days=7)).isoformat()
+        else:
+            since = (now - timedelta(days=30)).isoformat()
+        data = repo.get_comm_daily_summary(since=since)
+        return {"range": range, "days": data}
+    finally:
+        _close_conn(repo)
+
+
 # ============================================================
 # 系统状态 API
 # ============================================================
@@ -238,6 +256,80 @@ async def clear_comm_log(before: str = Query(..., description="ISO 8601 UTC time
 # ============================================================
 # 健康检查（兼容原有 bridge）
 # ============================================================
+
+# ============================================================
+# 运行时配置 API
+# ============================================================
+
+# 默认值（来自 .env / settings）
+from config.settings import settings as _settings
+
+CONFIG_DEFAULTS = {
+    "trigger_slope": str(_settings.trigger_slope),
+    "schedule_interval_idle": str(_settings.schedule_interval_idle),
+    "schedule_interval_watch": str(_settings.schedule_interval_watch),
+    "threshold_a": str(_settings.threshold_a),
+    "threshold_b": str(_settings.threshold_b),
+    "silence_period": str(_settings.silence_period),
+}
+
+CONFIG_LABELS = {
+    "trigger_slope": "触发斜率",
+    "schedule_interval_idle": "常规周期 (分钟)",
+    "schedule_interval_watch": "异常周期 (分钟)",
+    "threshold_a": "阈值 A",
+    "threshold_b": "阈值 B",
+    "silence_period": "静默期 (分钟)",
+}
+
+
+@app.get("/api/config")
+async def get_config():
+    """获取运行时配置（合并 DB 覆盖 + 默认值）。"""
+    repo = _get_repo()
+    try:
+        overrides = repo.get_all_config()
+        config = {}
+        for key, default in CONFIG_DEFAULTS.items():
+            config[key] = {
+                "value": overrides.get(key, default),
+                "default": default,
+                "label": CONFIG_LABELS.get(key, key),
+            }
+        return config
+    finally:
+        _close_conn(repo)
+
+
+@app.patch("/api/config")
+async def update_config(request: Request):
+    """更新运行时配置（立即持久化，下次 tick 生效）。"""
+    body = await request.json()
+    repo = _get_repo()
+    try:
+        updated = {}
+        for key, value in body.items():
+            if key not in CONFIG_DEFAULTS:
+                continue
+            str_val = str(value)
+            repo.set_config(key, str_val)
+            updated[key] = str_val
+        return {"updated": updated}
+    finally:
+        _close_conn(repo)
+
+
+@app.post("/api/config/reset")
+async def reset_config():
+    """恢复所有配置为默认值。"""
+    repo = _get_repo()
+    try:
+        for key, default in CONFIG_DEFAULTS.items():
+            repo.set_config(key, default)
+        return {"reset": list(CONFIG_DEFAULTS.keys())}
+    finally:
+        _close_conn(repo)
+
 
 @app.get("/health")
 async def health():

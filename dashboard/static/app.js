@@ -8,6 +8,7 @@ const state = {
   pageA: 1,
   pageB: 1,
   pageComm: 1,
+  commView: 'day',
   pageSize: 20,
   commPageSize: 30,
   refreshInterval: null,
@@ -44,6 +45,12 @@ function fmtTime(iso) {
   if (!iso) return '--';
   const d = new Date(iso);
   return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', hour12: false });
+}
+
+function fmtDate(iso) {
+  if (!iso) return '--';
+  const d = new Date(iso);
+  return d.toLocaleDateString('zh-CN', { month: '2-digit', day: '2-digit' });
 }
 
 function fmtDateTime(iso) {
@@ -83,13 +90,28 @@ async function loadPrices() {
           datasets: [{
             label: 'XAU/USD',
             data: prices,
-            borderColor: '#191c1f',
-            borderWidth: 2,
+            borderColor: '#505a63',
+            borderWidth: 2.5,
             pointRadius: 0,
-            pointHoverRadius: 4,
-            pointHoverBackgroundColor: '#191c1f',
-            tension: 0.2,
+            pointHoverRadius: 5,
+            tension: 0.15,
             fill: false,
+            spanGaps: false,
+            segment: {
+              borderColor: (ctx) => {
+                const p0 = ctx.p0.parsed.y;
+                const p1 = ctx.p1.parsed.y;
+                if (p1 > p0) return '#e23b4a';
+                if (p1 < p0) return '#00a87e';
+                return '#505a63';
+              },
+            },
+            pointHoverBackgroundColor: (ctx) => {
+              const i = ctx.dataIndex;
+              const data = ctx.dataset.data;
+              if (i === 0) return '#505a63';
+              return data[i] > data[i - 1] ? '#e23b4a' : '#00a87e';
+            },
           }],
         },
         options: {
@@ -105,7 +127,15 @@ async function loadPrices() {
               padding: 10,
               cornerRadius: 8,
               callbacks: {
-                label: ctx => '$' + ctx.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 }),
+                label: function(ctx) {
+                  const val = '$' + ctx.parsed.y.toLocaleString('en-US', { minimumFractionDigits: 2 });
+                  const i = ctx.dataIndex;
+                  const data = ctx.dataset.data;
+                  if (i === 0) return val;
+                  const diff = data[i] - data[i - 1];
+                  const arrow = diff > 0 ? ' ↑' : diff < 0 ? ' ↓' : ' →';
+                  return val + arrow;
+                },
               },
             },
           },
@@ -179,7 +209,7 @@ async function loadTrades(investorId) {
     } else {
       tbody.innerHTML = data.trades.map(t => `
         <tr>
-          <td class="time">${fmtTime(t.timestamp)}</td>
+          <td class="time">${fmtDate(t.timestamp)}<br>${fmtTime(t.timestamp)}</td>
           <td>${fmtUSD(t.total_assets_after)}</td>
           <td><span class="action-badge ${t.action} btn-sm">${actionLabel(t.action)}</span></td>
           <td>${t.margin_committed ? fmtUSD(t.margin_committed) : '--'}</td>
@@ -226,6 +256,28 @@ async function loadSystem() {
 }
 
 // === Communication Panel ===
+function switchCommView(view, btn) {
+  state.commView = view;
+  document.querySelectorAll('#commPanel .range-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+
+  const dayView = document.getElementById('commDayView');
+  const gridView = document.getElementById('commGridView');
+  const pagination = document.getElementById('paginationComm');
+
+  if (view === 'day') {
+    dayView.style.display = '';
+    gridView.style.display = 'none';
+    pagination.style.display = '';
+    loadCommLog();
+  } else {
+    dayView.style.display = 'none';
+    gridView.style.display = '';
+    pagination.style.display = 'none';
+    loadCommGrid(view);
+  }
+}
+
 async function loadCommLog() {
   try {
     const data = await fetchJSON(`${API}/comm?page=${state.pageComm}&size=${state.commPageSize}`);
@@ -286,6 +338,77 @@ async function loadCommLog() {
   }
 }
 
+async function loadCommGrid(view) {
+  try {
+    const data = await fetchJSON(`${API}/comm/summary?range=${view}`);
+    const container = document.getElementById('commGrid');
+    const days = data.days || [];
+
+    if (days.length === 0) {
+      container.innerHTML = `<div class="empty-state"><p>暂无通讯记录</p></div>`;
+      container.className = 'comm-grid';
+      return;
+    }
+
+    if (view === 'week') {
+      // Week view: 7 cells in one row
+      container.className = 'comm-grid week';
+      let html = days.map(d => {
+        const dayLabel = d.day.slice(5);
+        const total = d.gc_out + d.oc_in;
+        return `
+          <div class="comm-grid-cell${total ? '' : ' empty'}">
+            <div class="cell-day">${dayLabel}</div>
+            ${total ? `
+              <div class="cell-counts">
+                <span class="cell-gc" title="GC→OC">${d.gc_out}↑</span>
+                <span class="cell-oc" title="OC→GC">${d.oc_in}↓</span>
+              </div>
+            ` : '<div class="cell-counts" style="color:var(--color-muted);font-size:11px;">--</div>'}
+          </div>
+        `;
+      }).join('');
+      container.innerHTML = html;
+    } else {
+      // Month view: calendar layout
+      container.className = 'comm-grid month';
+
+      // Weekday headers
+      const weekdayNames = ['一', '二', '三', '四', '五', '六', '日'];
+      let html = weekdayNames.map(d => `<div class="comm-grid-header">${d}</div>`).join('');
+
+      // Calculate leading empty cells for first day of month
+      const firstDay = new Date(days[0].day + 'T00:00:00Z');
+      let startDow = firstDay.getUTCDay();
+      startDow = startDow === 0 ? 6 : startDow - 1;
+      for (let i = 0; i < startDow; i++) {
+        html += `<div class="comm-grid-cell empty"></div>`;
+      }
+
+      // Day cells
+      for (const d of days) {
+        const dayLabel = d.day.slice(8); // DD
+        const total = d.gc_out + d.oc_in;
+        html += `
+          <div class="comm-grid-cell${total ? '' : ' empty'}">
+            <div class="cell-day">${dayLabel}</div>
+            ${total ? `
+              <div class="cell-counts">
+                <span class="cell-gc" title="GC→OC">${d.gc_out}↑</span>
+                <span class="cell-oc" title="OC→GC">${d.oc_in}↓</span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+    }
+  } catch (e) {
+    console.error('Failed to load comm grid:', e);
+  }
+}
+
 function changeCommPage(delta) {
   const pageInfo = document.getElementById('pageInfoComm');
   const total = parseInt(pageInfo.dataset.total || '1');
@@ -338,6 +461,80 @@ document.getElementById('logModal').addEventListener('click', function(e) {
   if (e.target === this) closeLogModal();
 });
 
+// Config modal
+let configData = {};
+
+async function openConfigModal() {
+  document.getElementById('configModal').classList.add('active');
+  try {
+    configData = await fetchJSON(`${API}/config`);
+    const container = document.getElementById('configFields');
+    container.innerHTML = Object.entries(configData).map(([key, cfg]) => `
+      <div class="config-row">
+        <label class="config-label">${cfg.label}</label>
+        <div class="config-input-wrap">
+          <input type="number" step="any" class="config-input" id="cfg_${key}" value="${cfg.value}" data-key="${key}">
+          <span class="config-default">默认 ${cfg.default}</span>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('Failed to load config:', e);
+  }
+}
+
+function closeConfigModal() {
+  document.getElementById('configModal').classList.remove('active');
+}
+
+async function saveConfig() {
+  const inputs = document.querySelectorAll('.config-input');
+  const updates = {};
+  for (const input of inputs) {
+    const key = input.dataset.key;
+    const val = parseFloat(input.value);
+    if (isNaN(val)) {
+      alert(`${configData[key]?.label || key}: 请输入有效数字`);
+      return;
+    }
+    updates[key] = val;
+  }
+  try {
+    const resp = await fetch(`${API}/config`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates),
+    });
+    const result = await resp.json();
+    closeConfigModal();
+    alert(`已更新 ${Object.keys(result.updated).length} 项配置，下次 tick 自动生效`);
+  } catch (e) {
+    alert('保存失败: ' + e.message);
+  }
+}
+
+function resetConfigDefaults() {
+  const inputs = document.querySelectorAll('.config-input');
+  for (const input of inputs) {
+    const key = input.dataset.key;
+    if (configData[key]) {
+      input.value = configData[key].default;
+    }
+  }
+  // 同时提交到后端
+  const updates = {};
+  for (const input of inputs) {
+    updates[input.dataset.key] = parseFloat(input.value);
+  }
+  fetch(`${API}/config/reset`, { method: 'POST' })
+    .then(() => alert('已恢复全部默认值'))
+    .catch(e => alert('恢复失败: ' + e.message));
+}
+
+document.getElementById('configModal').addEventListener('click', function(e) {
+  if (e.target === this) closeConfigModal();
+});
+
 // === Refresh ===
 async function refreshAll() {
   await Promise.all([
@@ -346,7 +543,7 @@ async function refreshAll() {
     loadInvestors(),
     loadTrades('A'),
     loadTrades('B'),
-    loadCommLog(),
+    state.commView === 'day' ? loadCommLog() : loadCommGrid(state.commView),
   ]);
 }
 
@@ -356,8 +553,128 @@ function startAutoRefresh(intervalMs = 30000) {
   state.refreshInterval = setInterval(refreshAll, intervalMs);
 }
 
+// === Tab Switching ===
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-page').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  if (tab === 'asset') {
+    document.getElementById('tabAsset').classList.add('active');
+    // Resize chart when switching back
+    if (state.priceChart) setTimeout(() => state.priceChart.resize(), 50);
+  } else {
+    document.getElementById('tabComm').classList.add('active');
+  }
+}
+
 // === Init ===
 document.addEventListener('DOMContentLoaded', () => {
   refreshAll();
   startAutoRefresh(30000);
+  initResizeHandles();
 });
+
+// === Resize Handles ===
+function initResizeHandles() {
+  // Horizontal handle: chart ↔ investors
+  const topSection = document.getElementById('topSection');
+  const panelChart = document.getElementById('panelChart');
+  const panelInvestors = document.getElementById('panelInvestors');
+  const handleH = document.getElementById('resizeHandle');
+
+  if (handleH && topSection) {
+    makeDraggable(handleH, (dx) => {
+      const totalWidth = topSection.offsetWidth - handleH.offsetWidth;
+      const currentChartFlex = parseFloat(panelChart.style.flexGrow) || 3;
+      const currentInvFlex = parseFloat(panelInvestors.style.flexGrow) || 2;
+      const totalFlex = currentChartFlex + currentInvFlex;
+
+      // Convert dx to flex ratio change
+      const ratio = dx / totalWidth;
+      const delta = ratio * totalFlex;
+      const newChartFlex = Math.max(1, currentChartFlex + delta);
+      const newInvFlex = Math.max(0.5, totalFlex - newChartFlex);
+
+      panelChart.style.flexGrow = newChartFlex;
+      panelInvestors.style.flexGrow = newInvFlex;
+    });
+
+    // Double-click to reset
+    handleH.addEventListener('dblclick', () => {
+      panelChart.style.flexGrow = 3;
+      panelInvestors.style.flexGrow = 2;
+      if (state.priceChart) state.priceChart.resize();
+    });
+  }
+
+  // Vertical handle: top section ↔ comm panel
+  const commPanel = document.getElementById('commPanel');
+  const handleV = document.getElementById('resizeHandleH');
+
+  if (handleV && commPanel && topSection) {
+    makeDraggable(handleV, (_dx, dy) => {
+      const currentHeight = commPanel.offsetHeight;
+      const newHeight = Math.max(160, currentHeight - dy);
+      commPanel.style.maxHeight = newHeight + 'px';
+      topSection.style.flex = `1 1 calc(100% - ${newHeight + 24}px)`;
+    });
+
+    handleV.addEventListener('dblclick', () => {
+      commPanel.style.maxHeight = '';
+      topSection.style.flex = '';
+    });
+  }
+
+  // Investor A ↔ B handle
+  const panelInvA = document.getElementById('panelInvA');
+  const panelInvB = document.getElementById('panelInvB');
+  const handleInv = document.getElementById('resizeHandleInv');
+
+  if (handleInv && panelInvA && panelInvB) {
+    makeDraggable(handleInv, (_dx, dy) => {
+      const currentA = panelInvA.offsetHeight;
+      const newA = Math.max(100, currentA + dy);
+      panelInvA.style.flex = `0 0 ${newA}px`;
+      panelInvB.style.flex = '1 1 0';
+    });
+
+    handleInv.addEventListener('dblclick', () => {
+      panelInvA.style.flex = '';
+      panelInvB.style.flex = '';
+    });
+  }
+}
+
+function makeDraggable(handle, onMove) {
+  let startX, startY;
+
+  handle.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    startX = e.clientX;
+    startY = e.clientY;
+    handle.classList.add('active');
+    document.body.style.cursor = getComputedStyle(handle).cursor;
+    document.body.style.userSelect = 'none';
+
+    const onMouseMove = (e) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      startX = e.clientX;
+      startY = e.clientY;
+      onMove(dx, dy);
+    };
+
+    const onMouseUp = () => {
+      handle.classList.remove('active');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+      // Resize chart after drag
+      if (state.priceChart) state.priceChart.resize();
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  });
+}

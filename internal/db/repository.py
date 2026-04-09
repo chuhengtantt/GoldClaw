@@ -132,6 +132,25 @@ class DashboardRepository:
         ).fetchall()
         return rows, total
 
+    def get_comm_daily_summary(self, since: str | None = None) -> list[dict]:
+        """按天聚合通讯日志，返回每天的 GC→OC / OC→GC 成功次数。"""
+        query = (
+            "SELECT DATE(created_at) as day, "
+            "COUNT(CASE WHEN direction IN ('goldclaw→openclaw','internal') THEN 1 END) as gc_out, "
+            "COUNT(CASE WHEN direction = 'openclaw→goldclaw' THEN 1 END) as oc_in "
+            "FROM comm_log"
+        )
+        params: list[str] = []
+        if since:
+            query += " WHERE created_at >= ?"
+            params.append(since)
+        query += " GROUP BY DATE(created_at) ORDER BY day"
+        rows = self._conn.execute(query, params).fetchall()
+        return [
+            {"day": row["day"], "gc_out": row["gc_out"], "oc_in": row["oc_in"]}
+            for row in rows
+        ]
+
     def get_system_state(self) -> sqlite3.Row | None:
         """获取系统状态。"""
         return self._conn.execute(
@@ -164,3 +183,26 @@ class DashboardRepository:
         )
         self._conn.commit()
         return cur.rowcount
+
+    def get_config(self, key: str, default: str | None = None) -> str | None:
+        """读取运行时配置。"""
+        row = self._conn.execute(
+            "SELECT value FROM runtime_config WHERE key = ?", (key,)
+        ).fetchone()
+        return row["value"] if row else default
+
+    def get_all_config(self) -> dict[str, str]:
+        """读取所有运行时配置。"""
+        rows = self._conn.execute("SELECT key, value FROM runtime_config").fetchall()
+        return {row["key"]: row["value"] for row in rows}
+
+    def set_config(self, key: str, value: str) -> None:
+        """写入运行时配置（UPSERT）。"""
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        self._conn.execute(
+            "INSERT INTO runtime_config (key, value, updated_at) VALUES (?, ?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=?, updated_at=?",
+            (key, value, now, value, now),
+        )
+        self._conn.commit()

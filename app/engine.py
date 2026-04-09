@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 from config.settings import settings
 from internal.db.connection import get_connection
 from internal.db.migrations import run_migrations, seed_initial_data
-from internal.db.repository import InvestorRepository
+from internal.db.repository import InvestorRepository, DashboardRepository
 from internal.exception.errors import GoldClawError, PriceFetchError
 from internal.exception.handler import handle_tick_error
 from internal.exchange.schema import EmergencyPayload
@@ -53,16 +53,18 @@ class Engine:
     def __init__(self) -> None:
         self._conn: sqlite3.Connection | None = None
         self._history = PriceHistory(maxlen=1000)
+        self._trigger_slope = settings.trigger_slope
         self._state_machine = StateMachine(
             threshold_a=settings.threshold_a,
             threshold_b=settings.threshold_b,
             watch_duration=settings.watch_duration,
-            trigger_slope=settings.trigger_slope,
+            trigger_slope=self._trigger_slope,
             silence_period=settings.silence_period,
         )
         self._system_state = SystemState.IDLE
         self._volatility = 0.0
         self._slope = 0.0
+        self._scheduler: "GoldClawScheduler | None" = None  # noqa: F821
 
     def initialize(self) -> None:
         """初始化：创建目录、数据库、表。"""
@@ -102,6 +104,9 @@ class Engine:
         assert self._conn is not None
         conn = self._conn
         now = datetime.now(timezone.utc).isoformat()
+
+        # 0. 同步运行时配置
+        self._sync_runtime_config(conn)
 
         # 1. 获取金价
         try:
@@ -177,6 +182,37 @@ class Engine:
             (self._system_state.value, price, self._volatility, self._slope, now),
         )
         conn.commit()
+
+    def _sync_runtime_config(self, conn: sqlite3.Connection) -> None:
+        """从 runtime_config 表读取用户修改的参数并应用。"""
+        repo = DashboardRepository(conn)
+
+        # 触发斜率
+        val = repo.get_config("trigger_slope")
+        if val is not None:
+            try:
+                new_slope = float(val)
+                if new_slope != self._trigger_slope:
+                    self._trigger_slope = new_slope
+                    self._state_machine._trigger_slope = new_slope
+                    logger.info("Runtime config: trigger_slope=%.4f", new_slope)
+            except ValueError:
+                pass
+
+        # 调度间隔
+        idle_val = repo.get_config("schedule_interval_idle")
+        watch_val = repo.get_config("schedule_interval_watch")
+        if idle_val and watch_val and self._scheduler:
+            try:
+                idle_min = int(idle_val)
+                watch_min = int(watch_val)
+                self._scheduler.update_intervals(idle_min, watch_min)
+            except ValueError:
+                pass
+
+    def set_scheduler(self, scheduler: "GoldClawScheduler") -> None:  # noqa: F821
+        """注入调度器引用（run.py 启动时调用）。"""
+        self._scheduler = scheduler
 
     def _update_state_machine(self, price: float, conn: sqlite3.Connection) -> None:
         """更新状态机。"""

@@ -39,6 +39,10 @@ html, body {
   color: var(--color-dark);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  height: 100%;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 /* === Header === */
@@ -133,18 +137,163 @@ html, body {
 
 /* === Main Layout === */
 .main {
-  max-width: 1400px;
-  margin: 0 auto;
+  width: 100%;
   padding: var(--space-lg);
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
-.top-section {
-  display: grid;
-  grid-template-columns: 1fr 420px;
-  gap: var(--space-lg);
+/* === Tab Bar === */
+.tab-bar {
+  display: flex;
+  gap: 0;
+  background: var(--color-white);
+  border-bottom: 1px solid var(--color-border);
+  padding: 0 var(--space-xl);
+}
+
+.tab-btn {
+  padding: 12px 24px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-muted);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.tab-btn:hover { color: var(--color-dark); }
+
+.tab-btn.active {
+  color: var(--color-dark);
+  border-bottom-color: var(--color-dark);
+}
+
+/* === Tab Pages === */
+.tab-page {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tab-page.active {
+  display: flex;
+}
+
+/* === Asset Page Layout === */
+.asset-layout {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.panel-chart {
+  flex: 3 1 0;
+  min-width: 280px;
+  overflow: hidden;
+}
+
+.panel-investors {
+  flex: 2 1 0;
+  min-width: 260px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-inv-a {
+  flex: 1 1 0;
+  overflow: hidden;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-inv-b {
+  flex: 1 1 0;
+  overflow: hidden;
+  min-height: 120px;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-inv-a .card,
+.panel-inv-b .card {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel-inv-a .table-wrap,
+.panel-inv-b .table-wrap {
+  flex: 1 1 0;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* === Resize Handle (Horizontal — between chart and investors) === */
+.resize-handle {
+  width: 12px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.resize-grip {
+  width: 4px;
+  height: 40px;
+  border-radius: 2px;
+  background: var(--color-border);
+  transition: background 0.15s, height 0.15s;
+}
+
+.resize-handle:hover .resize-grip,
+.resize-handle.active .resize-grip {
+  background: var(--color-dark);
+  height: 64px;
+}
+
+/* === Resize Handle (Vertical — between top section and comm panel) === */
+.resize-handle-h {
+  height: 6px;
+  cursor: row-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.resize-grip-h {
+  height: 2px;
+  width: 28px;
+  border-radius: 1px;
+  background: var(--color-border);
+  transition: background 0.15s, width 0.15s;
+}
+
+.resize-handle-h:hover .resize-grip-h,
+.resize-handle-h.active .resize-grip-h {
+  background: var(--color-dark);
+  width: 40px;
+}
+
+/* Investor A/B handle specifically — minimal */
+#resizeHandleInv {
+  height: 6px;
+  margin: 2px 0;
 }
 
 /* === Card === */
@@ -178,7 +327,8 @@ html, body {
 /* === Price Chart === */
 .chart-container {
   position: relative;
-  height: 320px;
+  height: 360px;
+  min-height: 240px;
 }
 
 .range-tabs {
@@ -211,7 +361,7 @@ html, body {
 .investor-stack {
   display: flex;
   flex-direction: column;
-  gap: var(--space-lg);
+  gap: 0;
 }
 
 .investor-summary {
@@ -251,23 +401,26 @@ html, body {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: auto;
 }
 
 .data-table thead th {
   text-align: left;
-  padding: 8px 6px;
+  padding: 8px 10px;
   font-weight: 500;
   color: var(--color-muted);
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
 }
 
 .data-table tbody td {
-  padding: 10px 6px;
+  padding: 10px 10px;
   border-bottom: 1px solid var(--color-surface);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .data-table tbody tr:hover {
@@ -307,12 +460,23 @@ html, body {
   text-align: center;
 }
 
-/* === Communication Panel === */
-.comm-panel {
+/* === Communication Panel (full page in tab) === */
+.comm-panel-full {
   background: var(--color-white);
   border-radius: var(--radius-card);
   padding: var(--space-lg);
   border: 1px solid var(--color-border);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.comm-panel-full #commDayView,
+.comm-panel-full #commGridView {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .comm-header {
@@ -349,28 +513,29 @@ html, body {
 }
 
 .comm-cell {
-  padding: 10px 12px;
+  padding: 5px 8px;
   border-bottom: 1px solid var(--color-surface);
-  font-size: 13px;
+  font-size: 12px;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 5px;
+  line-height: 1.3;
 }
 
 .comm-cell.time {
   font-variant-numeric: tabular-nums;
   color: var(--color-secondary);
-  font-size: 12px;
-  min-width: 50px;
+  font-size: 11px;
+  min-width: 40px;
   flex-shrink: 0;
 }
 
 .comm-dot {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   flex-shrink: 0;
-  margin-top: 5px;
+  margin-top: 4px;
 }
 
 .comm-dot.tick { background: var(--color-secondary); }
@@ -392,11 +557,70 @@ html, body {
 
 .comm-event {
   font-weight: 500;
+  font-size: 11px;
 }
 
 .comm-detail {
   color: var(--color-muted);
+  font-size: 11px;
+}
+
+/* === Communication Grid (Week/Month view) === */
+.comm-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.comm-grid.week {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.comm-grid.month {
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.comm-grid-cell {
+  background: var(--color-surface);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  text-align: center;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border: 1px solid var(--color-border);
+}
+
+.comm-grid-cell.empty {
+  background: transparent;
+  border-color: transparent;
+}
+
+.comm-grid-cell .cell-day {
   font-size: 12px;
+  font-weight: 500;
+  color: var(--color-secondary);
+}
+
+.comm-grid-cell .cell-counts {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.cell-gc { color: var(--color-warning); }
+.cell-oc { color: var(--color-info); }
+
+.comm-grid-header {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-muted);
+  text-transform: uppercase;
+  padding: 6px 0;
 }
 
 /* === Log Clear Modal === */
@@ -461,6 +685,52 @@ html, body {
   background: var(--color-white);
 }
 
+/* === Config Modal === */
+.config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-surface);
+  gap: 16px;
+}
+
+.config-label {
+  font-size: 14px;
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 140px;
+}
+
+.config-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.config-input {
+  width: 100px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  font-family: var(--font-body);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.config-input:focus {
+  outline: none;
+  border-color: var(--color-dark);
+}
+
+.config-default {
+  font-size: 11px;
+  color: var(--color-muted);
+  white-space: nowrap;
+}
+
 /* === Empty State === */
 .empty-state {
   text-align: center;
@@ -483,15 +753,22 @@ html, body {
 }
 
 /* === Responsive === */
-@media (max-width: 1024px) {
-  .top-section {
-    grid-template-columns: 1fr;
+@media (max-width: 960px) {
+  .asset-layout {
+    flex-direction: column;
+  }
+  .resize-handle { display: none; }
+  .panel-chart, .panel-investors {
+    flex: none;
+    width: 100%;
   }
 }
 
 @media (max-width: 720px) {
-  .main { padding: var(--space-md); }
+  .main { padding: var(--space-md); overflow-y: auto; }
   .header { padding: var(--space-md); }
+  .chart-container { height: 260px; }
   .comm-timeline { grid-template-columns: 1fr; }
   .comm-arrow { display: none; }
+  .resize-handle, .resize-handle-h { display: none; }
 }
