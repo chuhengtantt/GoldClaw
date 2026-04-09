@@ -49,6 +49,8 @@ class BaseInvestor(ABC):
         """每 tick 更新持仓盈亏到数据库。"""
         s = self.state
         if s["current_action"] == "idle":
+            # idle 状态也更新 current_price，让 Dashboard 显示最新金价
+            self._repo.update(self.investor_id, current_price=current_price)
             return
 
         pnl = self.calc_pnl(current_price)
