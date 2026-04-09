@@ -158,21 +158,15 @@
 
 ### 准备 OpenClaw
 
-- [ ] **Step 14: 将以下文件提供给 OpenClaw**
-  - `RULES.md` — 通信规范（必须读）
+- [x] **Step 14: 将以下文件提供给 OpenClaw**
+  - `RULES.md` — 通信规范（cron job 已配置读取）
   - `data/state_for_openclaw.json` — 示例状态文件
 
-- [ ] **Step 15: 确认 OpenClaw 能读写 data/ 目录**
-  - 同机：直接共享 `data/` 路径
-  - 异机：配置共享文件夹同步
+- [x] **Step 15: 确认 OpenClaw 能读写 data/ 目录**
+  同机运行，路径 `/Users/orcastt/Code project/GoldClaw/data/`
 
-- [ ] **Step 16: OpenClaw 实现 4 步流程**
-  ```
-  1. 读 data/state_for_openclaw.json
-  2. 分析并决策
-  3. 写 data/orders_from_openclaw.json（格式见 RULES.md）
-  4. 等待 GoldClaw 下个 tick 捡起执行
-  ```
+- [x] **Step 16: OpenClaw 实现 4 步流程**
+  cron job 已配置：`0 */3 * * *`（每 3 小时），读取状态 + RULES.md → 决策 → 写 orders 文件
 
 ### 端到端联调
 
