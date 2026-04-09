@@ -1,5 +1,14 @@
 # GoldClaw
 
+<img width="1504" height="905" alt="image" src="https://github.com/user-attachments/assets/0065e9c0-1ddd-4cd5-b932-e7378b28ec67" />
+<img width="1514" height="908" alt="image" src="https://github.com/user-attachments/assets/72ed91f4-79fb-429c-9830-c41ea68107b4" />
+<img width="1517" height="900" alt="image" src="https://github.com/user-attachments/assets/173630bc-8643-44e3-a733-044df3fd92f8" />
+<img width="1508" height="901" alt="image" src="https://github.com/user-attachments/assets/2062b9fd-96ce-4d50-b4a9-0b276823fb06" />
+
+
+
+
+
 > 量化黄金交易模拟引擎 + Dashboard — Quantitative Gold Trading Simulation Engine
 
 ---
