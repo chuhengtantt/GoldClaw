@@ -11,13 +11,14 @@
 
 ### 环境配置
 
-- [ ] **安装新依赖**（bridge 需要 fastapi + uvicorn）
+- [x] **安装新依赖**（bridge 需要 fastapi + uvicorn）
   ```bash
   source .venv/bin/activate
   pip install -r requirements.txt
   ```
 
-- [ ] **配置 .env — 检查以下变量**
+- [x] **配置 .env — 检查以下变量**
+  > 已配置 Bridge URL: `http://localhost:8088/emergency`（端口 8000 被 olmx 占用，改用 8088）
   ```
   # Gold API（已配好，确认能访问）
   GOLD_API_URL=https://api.gold-api.com/price/XAU
@@ -44,20 +45,21 @@
 
 ### 验证 GoldClaw 独立运行
 
-- [ ] **Step 1: 启动引擎，确认金价获取正常**
+- [x] **Step 1: 启动引擎，确认金价获取正常**
+  > 验证通过：XAU $4729.90
   ```bash
   python main.py
   ```
   期望日志：`[tick] XAU $xxxx.xx, state=IDLE`
   看到 tick 日志后 Ctrl+C 关闭
 
-- [ ] **Step 2: 确认 state_for_openclaw.json 已生成**
+- [x] **Step 2: 确认 state_for_openclaw.json 已生成**
   ```bash
   cat data/state_for_openclaw.json | python -m json.tool
   ```
   期望：JSON 含 `system`、`investors`（A 和 B）、`warnings`
 
-- [ ] **Step 3: 手动模拟 OpenClaw 开仓指令**
+- [x] **Step 3: 手动模拟 OpenClaw 开仓指令**
   ```bash
   cat > data/orders_from_openclaw.json << 'EOF'
   {
@@ -80,32 +82,32 @@
   EOF
   ```
 
-- [ ] **Step 4: 重启引擎，确认指令被执行**
+- [x] **Step 4: 重启引擎，确认指令被执行**
   ```bash
   python main.py
   ```
   期望日志：`Processing orders from OpenClaw: 2 instructions`
   等 tick 完成后 Ctrl+C
 
-- [ ] **Step 5: 确认数据库已更新**
+- [x] **Step 5: 确认数据库已更新**
   ```bash
   sqlite3 data/goldclaw.db "SELECT investor_id, current_action, margin_committed FROM investor_state"
   ```
   期望：A 的 action 为 `cfd_long`，margin_committed > 0
 
-- [ ] **Step 6: 确认 trade_history 有记录**
+- [x] **Step 6: 确认 trade_history 有记录**
   ```bash
   sqlite3 data/goldclaw.db "SELECT investor_id, action, gold_price FROM trade_history ORDER BY id DESC LIMIT 3"
   ```
   期望：至少有 A 的 `cfd_long` 记录
 
-- [ ] **Step 7: 确认 orders 文件被重命名**
+- [x] **Step 7: 确认 orders 文件被重命名**
   ```bash
   ls data/orders_processed_*.json
   ```
   期望：存在一个 processed 文件
 
-- [ ] **Step 8: 手动模拟平仓**
+- [x] **Step 8: 手动模拟平仓**
   ```bash
   cat > data/orders_from_openclaw.json << 'EOF'
   {
@@ -122,27 +124,30 @@
 
 ### 配置 Bridge（可选）
 
-- [ ] **Step 9: 启动 Bridge**
+- [x] **Step 9: 启动 Bridge**（端口 8088）
+  ```bash
+  python openclaw_bridge.py 8088
+  ```
   ```bash
   # 另开一个终端
   python openclaw_bridge.py
   ```
   期望：`Uvicorn running on http://0.0.0.0:8000`
 
-- [ ] **Step 10: 配置 .env 启用门铃**
+- [x] **Step 10: 配置 .env 启用门铃**
   ```
-  OPENCLAW_BRIDGE_URL=http://localhost:8000/emergency
+  OPENCLAW_BRIDGE_URL=http://localhost:8088/emergency
   ```
 
-- [ ] **Step 11: 测试门铃**
+- [x] **Step 11: 测试门铃**
   ```bash
-  curl -X POST http://localhost:8000/emergency \
+  curl -X POST http://localhost:8088/emergency \
     -H "Content-Type: application/json" \
     -d '{"event":"state_trigger","gold_price":4800,"message":"test"}'
   ```
   期望：返回 `{"status": "received", ...}`
 
-- [ ] **Step 12: 确认 bridge_events.jsonl 有记录**
+- [x] **Step 12: 确认 bridge_events.jsonl 有记录**
   ```bash
   cat data/bridge_events.jsonl
   ```
