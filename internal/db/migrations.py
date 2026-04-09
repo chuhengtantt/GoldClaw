@@ -78,6 +78,27 @@ MIGRATIONS = [
         acknowledged    INTEGER DEFAULT 0
     );
     """,
+    """
+    CREATE TABLE IF NOT EXISTS price_ticks (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        price      REAL NOT NULL,
+        source     TEXT DEFAULT '',
+        tick_time  TEXT NOT NULL,
+        volatility REAL DEFAULT 0,
+        slope      REAL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_price_ticks_time ON price_ticks(tick_time);
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS comm_log (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        direction   TEXT NOT NULL,
+        event_type  TEXT NOT NULL,
+        payload     TEXT DEFAULT '{}',
+        created_at  TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_comm_log_time ON comm_log(created_at);
+    """,
 ]
 
 

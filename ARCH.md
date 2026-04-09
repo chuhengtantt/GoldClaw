@@ -15,10 +15,10 @@
 | HTTP 客户端 | httpx | 异步就绪、超时控制精细 |
 | 数据校验 | Pydantic v2 | 严格 Schema 校验 + 幻觉检测 |
 | 配置管理 | pydantic-settings + .env | 类型安全的环境变量 |
+| Bridge / Dashboard | FastAPI + uvicorn | 门铃接收器 + Dashboard REST API（端口 8088） |
 | 版本管理 | Git | 代码快照、回退、协作 |
 
 不用的：
-- **不用 FastAPI/Flask**: v1.0 无 Web 界面，不需要 HTTP 服务端
 - **不用 MySQL/PostgreSQL**: 本地单文件足够，不需要数据库服务
 - **不用 Redis**: 无缓存需求
 - **不用 Docker**: 本地单进程运行，不需要容器化
@@ -33,10 +33,19 @@ GoldClaw/
 ├── ARCH.md                          # 技术架构与工程约束（本文件）
 ├── project_state.md                 # 项目当前状态（进度、bug、下一步）
 ├── main.py                          # 入口：启动调度器
+├── openclaw_bridge.py               # 门铃接收器（FastAPI，端口 8088）
+├── dashboard_api.py                 # Dashboard REST API（FastAPI）
 ├── requirements.txt                 # 依赖
 ├── .env                             # 真实配置（不提交 Git）
 ├── .env.example                     # 配置模板（提交 Git）
 ├── .gitignore
+│
+├── dashboard/                       # Dashboard 前端（开发中）
+│   ├── index.html
+│   └── static/
+│
+├── docs/                            # 开发文档
+│   └── dashboard_dev_plan.md
 │
 ├── config/                          # 配置层
 │   ├── __init__.py
@@ -78,7 +87,7 @@ GoldClaw/
 │   │   ├── __init__.py
 │   │   ├── connection.py            # SQLite 连接（WAL 模式）
 │   │   ├── migrations.py            # 建表/迁移
-│   │   └── repository.py            # 数据访问层
+│   │   └── repository.py            # 数据访问层（InvestorRepository + DashboardRepository）
 │   ├── exchange/                    # 通信层（信箱 + 门铃）
 │   │   ├── __init__.py
 │   │   ├── schema.py                # Pydantic Schema（信箱/门铃/指令）
@@ -214,6 +223,8 @@ except GoldClawError as e:
 | `trade_history` | 交易流水（素材库） | INSERT Only |
 | `system_state` | 状态机参数 | UPDATE |
 | `violations` | 耻辱柱（LLM 违规记录） | INSERT Only |
+| `price_ticks` | 金价 tick 历史（Dashboard 数据源） | INSERT Only |
+| `comm_log` | 通讯日志（所有方向的事件） | INSERT Only |
 
 详细字段定义见 PRD.md 第 7 节。
 
@@ -244,6 +255,8 @@ pydantic>=2.5.0
 pydantic-settings>=2.1.0
 APScheduler>=3.10.0
 httpx>=0.27.0
+fastapi>=0.110.0
+uvicorn>=0.29.0
 pytest>=9.0.0
 ```
 

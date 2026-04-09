@@ -1,5 +1,5 @@
 """
-GoldClaw 数据访问层 — InvestorRepository。
+GoldClaw 数据访问层 — InvestorRepository + DashboardRepository。
 """
 
 import sqlite3
@@ -60,3 +60,107 @@ class InvestorRepository:
                 details.get("reasoning"),
             ),
         )
+
+
+class DashboardRepository:
+    """Dashboard 数据访问。"""
+
+    def __init__(self, conn: sqlite3.Connection) -> None:
+        self._conn = conn
+
+    def get_price_ticks(self, since: str | None = None, limit: int = 1000) -> list[sqlite3.Row]:
+        """获取价格 tick 历史。since 为 ISO 8601 UTC 时间戳。"""
+        if since:
+            rows = self._conn.execute(
+                "SELECT price, source, tick_time, volatility, slope "
+                "FROM price_ticks WHERE tick_time >= ? ORDER BY tick_time ASC LIMIT ?",
+                (since, limit),
+            ).fetchall()
+        else:
+            rows = self._conn.execute(
+                "SELECT price, source, tick_time, volatility, slope "
+                "FROM price_ticks ORDER BY tick_time DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return rows
+
+    def get_latest_tick(self) -> sqlite3.Row | None:
+        """获取最新价格 tick。"""
+        return self._conn.execute(
+            "SELECT price, source, tick_time, volatility, slope "
+            "FROM price_ticks ORDER BY tick_time DESC LIMIT 1"
+        ).fetchone()
+
+    def get_all_investors(self) -> list[sqlite3.Row]:
+        """获取所有投资者当前状态。"""
+        return self._conn.execute(
+            "SELECT * FROM investor_state ORDER BY investor_id"
+        ).fetchall()
+
+    def get_trade_history(
+        self, investor_id: str | None = None, page: int = 1, size: int = 20,
+    ) -> tuple[list[sqlite3.Row], int]:
+        """获取交易历史，返回 (rows, total_count)。"""
+        offset = (page - 1) * size
+        if investor_id:
+            total = self._conn.execute(
+                "SELECT COUNT(*) FROM trade_history WHERE investor_id = ?",
+                (investor_id,),
+            ).fetchone()[0]
+            rows = self._conn.execute(
+                "SELECT * FROM trade_history WHERE investor_id = ? "
+                "ORDER BY timestamp DESC LIMIT ? OFFSET ?",
+                (investor_id, size, offset),
+            ).fetchall()
+        else:
+            total = self._conn.execute(
+                "SELECT COUNT(*) FROM trade_history"
+            ).fetchone()[0]
+            rows = self._conn.execute(
+                "SELECT * FROM trade_history ORDER BY timestamp DESC LIMIT ? OFFSET ?",
+                (size, offset),
+            ).fetchall()
+        return rows, total
+
+    def get_comm_log(self, page: int = 1, size: int = 50) -> tuple[list[sqlite3.Row], int]:
+        """获取通讯日志，返回 (rows, total_count)。"""
+        offset = (page - 1) * size
+        total = self._conn.execute("SELECT COUNT(*) FROM comm_log").fetchone()[0]
+        rows = self._conn.execute(
+            "SELECT * FROM comm_log ORDER BY created_at DESC LIMIT ? OFFSET ?",
+            (size, offset),
+        ).fetchall()
+        return rows, total
+
+    def get_system_state(self) -> sqlite3.Row | None:
+        """获取系统状态。"""
+        return self._conn.execute(
+            "SELECT * FROM system_state WHERE id = 1"
+        ).fetchone()
+
+    def get_table_stats(self) -> dict[str, int]:
+        """获取各表行数统计。"""
+        stats = {}
+        for table in ("price_ticks", "comm_log", "trade_history", "violations"):
+            try:
+                count = self._conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                stats[table] = count
+            except Exception:
+                stats[table] = 0
+        return stats
+
+    def delete_price_ticks_before(self, before: str) -> int:
+        """删除指定时间之前的价格 tick，返回删除行数。"""
+        cur = self._conn.execute(
+            "DELETE FROM price_ticks WHERE tick_time < ?", (before,)
+        )
+        self._conn.commit()
+        return cur.rowcount
+
+    def delete_comm_log_before(self, before: str) -> int:
+        """删除指定时间之前的通讯日志，返回删除行数。"""
+        cur = self._conn.execute(
+            "DELETE FROM comm_log WHERE created_at < ?", (before,)
+        )
+        self._conn.commit()
+        return cur.rowcount

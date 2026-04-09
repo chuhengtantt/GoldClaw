@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoldClaw Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-left">
+      <h1>GoldClaw</h1>
+      <span id="systemBadge" class="system-badge idle">IDLE</span>
+      <span id="priceDisplay" style="font-size:14px; color:var(--color-secondary); margin-left:8px;">--</span>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-outline btn-sm" onclick="openLogModal()">日志管理</button>
+      <button class="btn btn-primary btn-sm" onclick="refreshAll()">刷新</button>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- Top Section: Chart + Investors -->
+    <div class="top-section">
+
+      <!-- Price Chart Card -->
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">金价记录折线图</div>
+            <div class="card-subtitle" id="chartSubtitle">加载中...</div>
+          </div>
+          <div class="range-tabs">
+            <button class="range-tab active" data-range="day" onclick="switchRange('day', this)">日视图</button>
+            <button class="range-tab" data-range="week" onclick="switchRange('week', this)">周视图</button>
+            <button class="range-tab" data-range="month" onclick="switchRange('month', this)">月视图</button>
+          </div>
+        </div>
+        <div class="chart-container">
+          <canvas id="priceChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Investor Cards Stack -->
+      <div class="investor-stack">
+
+        <!-- Investor A -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">投资者 A</div>
+              <div class="card-subtitle">趋势收割者 · CFD 1:20</div>
+            </div>
+            <span id="actionBadgeA" class="action-badge idle">IDLE</span>
+          </div>
+          <div class="investor-summary">
+            <span class="investor-asset" id="totalAssetsA">$--</span>
+            <span id="pnlA" class="pnl-positive">--</span>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>资产</th>
+                <th>决策</th>
+                <th>Margin</th>
+                <th>TP</th>
+                <th>SL</th>
+              </tr>
+            </thead>
+            <tbody id="tradesBodyA"></tbody>
+          </table>
+          <div class="pagination" id="paginationA">
+            <button onclick="changePage('A', -1)">&lt;</button>
+            <span class="page-info" id="pageInfoA">1/1</span>
+            <button onclick="changePage('A', 1)">&gt;</button>
+          </div>
+        </div>
+
+        <!-- Investor B -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">投资者 B</div>
+              <div class="card-subtitle">防御性狙击手 · CFD/SGLN</div>
+            </div>
+            <span id="actionBadgeB" class="action-badge idle">IDLE</span>
+          </div>
+          <div class="investor-summary">
+            <span class="investor-asset" id="totalAssetsB">$--</span>
+            <span id="pnlB" class="pnl-positive">--</span>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>资产</th>
+                <th>决策</th>
+                <th>Margin</th>
+                <th>TP</th>
+                <th>SL</th>
+              </tr>
+            </thead>
+            <tbody id="tradesBodyB"></tbody>
+          </table>
+          <div class="pagination" id="paginationB">
+            <button onclick="changePage('B', -1)">&lt;</button>
+            <span class="page-info" id="pageInfoB">1/1</span>
+            <button onclick="changePage('B', 1)">&gt;</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Communication Panel -->
+    <div class="comm-panel">
+      <div class="card-header">
+        <div>
+          <div class="comm-header">通讯状态监控</div>
+          <div class="card-subtitle">GoldClaw ↔ OpenClaw 双向通讯</div>
+        </div>
+        <div class="pagination" id="paginationComm">
+          <button onclick="changeCommPage(-1)">&lt;</button>
+          <span class="page-info" id="pageInfoComm">1/1</span>
+          <button onclick="changeCommPage(1)">&gt;</button>
+        </div>
+      </div>
+
+      <div class="comm-timeline">
+        <div class="comm-column-header comm-col-goldclaw">GoldClaw</div>
+        <div class="comm-column-header comm-col-arrow">→←</div>
+        <div class="comm-column-header comm-col-openclaw">OpenClaw</div>
+      </div>
+      <div class="comm-timeline" id="commBody">
+        <div class="empty-state"><p>加载通讯日志...</p></div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Log Clear Modal -->
+  <div class="modal-overlay" id="logModal">
+    <div class="modal">
+      <h2>日志管理</h2>
+      <div class="modal-stats" id="logStats">
+        <div class="modal-stat-row"><span>price_ticks</span><span class="count" id="statPriceTicks">--</span></div>
+        <div class="modal-stat-row"><span>comm_log</span><span class="count" id="statCommLog">--</span></div>
+        <div class="modal-stat-row"><span>trade_history</span><span class="count" id="statTradeHistory">--</span></div>
+        <div class="modal-stat-row"><span>violations</span><span class="count" id="statViolations">--</span></div>
+      </div>
+
+      <label style="font-size:14px; font-weight:500; display:block; margin-top:16px;">选择清除目标</label>
+      <select id="clearTarget">
+        <option value="price_ticks">price_ticks — 价格记录</option>
+        <option value="comm_log">comm_log — 通讯日志</option>
+      </select>
+
+      <label style="font-size:14px; font-weight:500; display:block; margin-top:12px;">保留范围</label>
+      <select id="clearRange">
+        <option value="7">保留最近 7 天</option>
+        <option value="30">保留最近 30 天</option>
+        <option value="90">保留最近 90 天</option>
+        <option value="0">全部清除</option>
+      </select>
+
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeLogModal()">取消</button>
+        <button class="btn btn-danger" onclick="clearLogs()">确认清除</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

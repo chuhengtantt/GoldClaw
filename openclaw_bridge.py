@@ -13,6 +13,7 @@ GoldClaw 侧 .env 配置：
 
 import json
 import logging
+import sqlite3
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -62,6 +63,9 @@ async def emergency(request: Request) -> JSONResponse:
         event, investor, price,
     )
 
+    # 记录紧急事件到 comm_log 表
+    _log_to_db(payload)
+
     # 1. 记录事件
     _log_event(payload)
 
@@ -102,6 +106,29 @@ def _log_event(payload: dict) -> None:
     }
     with open(log_file, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+
+def _log_to_db(payload: dict) -> None:
+    """将紧急事件写入 comm_log 表。"""
+    db_path = DATA_DIR / "goldclaw.db"
+    if not db_path.exists():
+        return
+    try:
+        conn = sqlite3.connect(str(db_path))
+        conn.execute(
+            "INSERT INTO comm_log (direction, event_type, payload, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            (
+                "goldclaw→openclaw",
+                "emergency",
+                json.dumps(payload, ensure_ascii=False),
+                datetime.now(timezone.utc).isoformat(),
+            ),
+        )
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logger.warning("Failed to log emergency to DB: %s", e)
 
 
 def _trigger_openclaw(event: str, payload: dict) -> None:

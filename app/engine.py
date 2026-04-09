@@ -120,6 +120,20 @@ class Engine:
         self._volatility = calc_volatility(prices)
         self._slope = calc_slope(prices, window=settings.cycle_x)
 
+        # 3.5 持久化价格 tick
+        conn.execute(
+            "INSERT INTO price_ticks (price, source, tick_time, volatility, slope) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (price, source, now, self._volatility, self._slope),
+        )
+
+        # 3.6 记录 tick 通讯日志
+        conn.execute(
+            "INSERT INTO comm_log (direction, event_type, payload, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            ("internal", "tick", f'{{"price": {price}, "state": "{self._system_state.value}"}}', now),
+        )
+
         # 4. 更新状态机
         self._update_state_machine(price, conn)
 
@@ -147,6 +161,14 @@ class Engine:
         )
         write_state_file(report)
 
+        # 8.5 记录状态报告通讯日志
+        conn.execute(
+            "INSERT INTO comm_log (direction, event_type, payload, created_at) "
+            "VALUES (?, ?, ?, ?)",
+            ("goldclaw→openclaw", "status_report",
+             f'{{"state": "{self._system_state.value}", "price": {price}}}', now),
+        )
+
         # 9. 更新 system_state 表
         repo = InvestorRepository(conn)
         conn.execute(
@@ -173,7 +195,18 @@ class Engine:
 
         if new_state != self._system_state:
             logger.info("State: %s → %s", self._system_state.value, new_state.value)
+            old_state = self._system_state.value
             self._system_state = new_state
+
+            # 记录状态变化到通讯日志
+            now = datetime.now(timezone.utc).isoformat()
+            conn.execute(
+                "INSERT INTO comm_log (direction, event_type, payload, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                ("goldclaw→openclaw", "state_change",
+                 f'{{"from": "{old_state}", "to": "{new_state.value}", "price": {price}}}',
+                 now),
+            )
 
             # TRIGGER 时按门铃
             if new_state == SystemState.TRIGGER:
@@ -206,6 +239,16 @@ class Engine:
             return
 
         logger.info("Processing orders from OpenClaw: %d instructions", len(orders.instructions))
+
+        # 记录 OpenClaw 指令到通讯日志
+        now = datetime.now(timezone.utc).isoformat()
+        for inst in orders.instructions:
+            conn.execute(
+                "INSERT INTO comm_log (direction, event_type, payload, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                ("openclaw→goldclaw", "order",
+                 f'{{"investor": "{inst.investor}", "action": "{inst.action}"}}', now),
+            )
         raw = {"instructions": [inst.model_dump() for inst in orders.instructions]}
         valid, violations = validate_orders(raw)
 

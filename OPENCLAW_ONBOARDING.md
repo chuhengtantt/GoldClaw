@@ -170,19 +170,24 @@
 
 ### 端到端联调
 
-- [ ] **Step 17: 启动 GoldClaw + OpenClaw 同时运行**
+- [x] **Step 17: 启动 GoldClaw + OpenClaw 同时运行**
 
-- [ ] **Step 18: OpenClaw 发 idle 指令** → 确认文件通路通
+- [x] **Step 18: OpenClaw 发 idle 指令** → 确认文件通路通
 
-- [ ] **Step 19: OpenClaw 发开仓指令**（A 做 cfd_long）→ 确认交易执行
+- [x] **Step 19: OpenClaw 发开仓指令**（A 做 cfd_long）→ 确认交易执行
+  > 验证通过：A cfd_long @ $4,740, margin=6930, tp=4876, sl=4638
 
-- [ ] **Step 20: 等几个 tick** → 确认盈亏跟踪（state_for_openclaw.json 中 nominal_pnl 变化）
+- [x] **Step 20: 等几个 tick** → 确认盈亏跟踪（state_for_openclaw.json 中 nominal_pnl 变化）
+  > 验证通过：金价 $4,743.90 时 A nominal_pnl=+$114.04
 
-- [ ] **Step 21: OpenClaw 发 close** → 确认平仓 + trade_history 记录
+- [x] **Step 21: OpenClaw 发 close** → 确认平仓 + trade_history 记录
+  > 验证通过：A 平仓净赚 +$235.67，cash=$10,165.67
 
-- [ ] **Step 22: OpenClaw 发非法指令**（A 做 sgln_long）→ 确认被拦截，violations 表有记录
+- [x] **Step 22: OpenClaw 发非法指令**（A 做 sgln_long）→ 确认被拦截，violations 表有记录
+  > 验证通过：violations 表记录 "Investor A cannot sgln_long"，A 状态未变
 
-- [ ] **Step 23: 检查下次状态文件 warnings 字段** → 确认 OpenClaw 能看到前置警告
+- [x] **Step 23: 检查下次状态文件 warnings 字段** → 确认 OpenClaw 能看到前置警告
+  > 验证通过：state_for_openclaw.json warnings 数组包含违规详情
 
 ---
 
