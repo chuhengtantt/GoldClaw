@@ -5,101 +5,191 @@
 
 ---
 
-## 一、GoldClaw 侧准备工作
+## 零、联调前 TODO 清单
 
-### 1. 启动 GoldClaw 并验证输出
+按顺序逐项完成，每完成一项打勾。
 
-```bash
-source .venv/bin/activate
-python main.py
-```
+### 环境配置
 
-等 1 个 tick 后，检查 `data/state_for_openclaw.json` 是否生成、内容是否完整。Ctrl+C 关闭。
+- [ ] **安装新依赖**（bridge 需要 fastapi + uvicorn）
+  ```bash
+  source .venv/bin/activate
+  pip install -r requirements.txt
+  ```
 
-### 2. 手动模拟一次 OpenClaw 决策
+- [ ] **配置 .env — 检查以下变量**
+  ```
+  # Gold API（已配好，确认能访问）
+  GOLD_API_URL=https://api.gold-api.com/price/XAU
 
-编辑 `data/orders_from_openclaw.json`，写入测试指令：
+  # OpenClaw Bridge（v1 联调先留空，后续填）
+  OPENCLAW_BRIDGE_URL=
+  OPENCLAW_BRIDGE_TIMEOUT=30
 
-```json
-{
-  "timestamp": "2026-04-09T12:00:00Z",
-  "instructions": [
-    {
-      "investor": "A",
-      "action": "cfd_long",
-      "margin_pct": 0.8,
-      "tp": 4800.00,
-      "sl": 4600.00,
-      "reasoning": "接入测试"
-    },
-    {
-      "investor": "B",
-      "action": "idle"
-    }
-  ]
-}
-```
+  # Database（默认即可）
+  DB_PATH=data/goldclaw.db
 
-再启动 GoldClaw，观察日志是否出现 `Processing orders from OpenClaw`，然后检查数据库：
+  # 初始资金（默认 10000，按需调整）
+  INITIAL_CASH_A=10000
+  INITIAL_CASH_B=10000
 
-```bash
-sqlite3 data/goldclaw.db "SELECT current_action, margin_committed FROM investor_state"
-```
+  # 状态机阈值（默认即可，联调时可调小便于触发）
+  CYCLE_X=5
+  THRESHOLD_A=0.003
+  THRESHOLD_B=0.005
+  WATCH_DURATION=5
+  TRIGGER_SLOPE=0.002
+  SILENCE_PERIOD=30
+  ```
 
-### 3. 确定文件共享方式
+### 验证 GoldClaw 独立运行
 
-GoldClaw 和 OpenClaw 必须能读写同一个 `data/` 目录。
+- [ ] **Step 1: 启动引擎，确认金价获取正常**
+  ```bash
+  python main.py
+  ```
+  期望日志：`[tick] XAU $xxxx.xx, state=IDLE`
+  看到 tick 日志后 Ctrl+C 关闭
 
-- **同机运行**：OpenClaw 直接读写同一个 `data/` 目录（最简单，推荐先这样）
-- **异机运行**：需要共享文件夹或云存储同步（后期再考虑）
+- [ ] **Step 2: 确认 state_for_openclaw.json 已生成**
+  ```bash
+  cat data/state_for_openclaw.json | python -m json.tool
+  ```
+  期望：JSON 含 `system`、`investors`（A 和 B）、`warnings`
 
-### 4. 门铃 Bridge（可选，v1 联调可跳过）
+- [ ] **Step 3: 手动模拟 OpenClaw 开仓指令**
+  ```bash
+  cat > data/orders_from_openclaw.json << 'EOF'
+  {
+    "timestamp": "2026-04-09T12:00:00Z",
+    "instructions": [
+      {
+        "investor": "A",
+        "action": "cfd_long",
+        "margin_pct": 0.8,
+        "tp": 4800.00,
+        "sl": 4600.00,
+        "reasoning": "接入测试"
+      },
+      {
+        "investor": "B",
+        "action": "idle"
+      }
+    ]
+  }
+  EOF
+  ```
 
-如果需要 TRIGGER 紧急唤醒：
+- [ ] **Step 4: 重启引擎，确认指令被执行**
+  ```bash
+  python main.py
+  ```
+  期望日志：`Processing orders from OpenClaw: 2 instructions`
+  等 tick 完成后 Ctrl+C
 
-- 在 `.env` 设置 `GOLDCLAW_OPENCLAW_BRIDGE_URL=http://localhost:8000/emergency`
-- OpenClaw 侧需要一个 FastAPI 服务接收 POST（几行代码）
-- **v1 联调可以先不设**，靠 OpenClaw cron 定时读信箱即可
+- [ ] **Step 5: 确认数据库已更新**
+  ```bash
+  sqlite3 data/goldclaw.db "SELECT investor_id, current_action, margin_committed FROM investor_state"
+  ```
+  期望：A 的 action 为 `cfd_long`，margin_committed > 0
+
+- [ ] **Step 6: 确认 trade_history 有记录**
+  ```bash
+  sqlite3 data/goldclaw.db "SELECT investor_id, action, gold_price FROM trade_history ORDER BY id DESC LIMIT 3"
+  ```
+  期望：至少有 A 的 `cfd_long` 记录
+
+- [ ] **Step 7: 确认 orders 文件被重命名**
+  ```bash
+  ls data/orders_processed_*.json
+  ```
+  期望：存在一个 processed 文件
+
+- [ ] **Step 8: 手动模拟平仓**
+  ```bash
+  cat > data/orders_from_openclaw.json << 'EOF'
+  {
+    "timestamp": "2026-04-09T12:05:00Z",
+    "instructions": [
+      {"investor": "A", "action": "close"},
+      {"investor": "B", "action": "idle"}
+    ]
+  }
+  EOF
+  python main.py
+  ```
+  期望日志：A 平仓，trade_history 新增 `close` 记录
+
+### 配置 Bridge（可选）
+
+- [ ] **Step 9: 启动 Bridge**
+  ```bash
+  # 另开一个终端
+  python openclaw_bridge.py
+  ```
+  期望：`Uvicorn running on http://0.0.0.0:8000`
+
+- [ ] **Step 10: 配置 .env 启用门铃**
+  ```
+  OPENCLAW_BRIDGE_URL=http://localhost:8000/emergency
+  ```
+
+- [ ] **Step 11: 测试门铃**
+  ```bash
+  curl -X POST http://localhost:8000/emergency \
+    -H "Content-Type: application/json" \
+    -d '{"event":"state_trigger","gold_price":4800,"message":"test"}'
+  ```
+  期望：返回 `{"status": "received", ...}`
+
+- [ ] **Step 12: 确认 bridge_events.jsonl 有记录**
+  ```bash
+  cat data/bridge_events.jsonl
+  ```
+
+- [ ] **Step 13: 配置 OPENCLAW_TRIGGER_CMD**
+  编辑 `openclaw_bridge.py`，将 `OPENCLAW_TRIGGER_CMD` 改为 OpenClaw 的触发命令：
+  ```python
+  OPENCLAW_TRIGGER_CMD = ["python", "path/to/openclaw_main.py", "--trigger"]
+  ```
+
+### 准备 OpenClaw
+
+- [ ] **Step 14: 将以下文件提供给 OpenClaw**
+  - `RULES.md` — 通信规范（必须读）
+  - `data/state_for_openclaw.json` — 示例状态文件
+
+- [ ] **Step 15: 确认 OpenClaw 能读写 data/ 目录**
+  - 同机：直接共享 `data/` 路径
+  - 异机：配置共享文件夹同步
+
+- [ ] **Step 16: OpenClaw 实现 4 步流程**
+  ```
+  1. 读 data/state_for_openclaw.json
+  2. 分析并决策
+  3. 写 data/orders_from_openclaw.json（格式见 RULES.md）
+  4. 等待 GoldClaw 下个 tick 捡起执行
+  ```
+
+### 端到端联调
+
+- [ ] **Step 17: 启动 GoldClaw + OpenClaw 同时运行**
+
+- [ ] **Step 18: OpenClaw 发 idle 指令** → 确认文件通路通
+
+- [ ] **Step 19: OpenClaw 发开仓指令**（A 做 cfd_long）→ 确认交易执行
+
+- [ ] **Step 20: 等几个 tick** → 确认盈亏跟踪（state_for_openclaw.json 中 nominal_pnl 变化）
+
+- [ ] **Step 21: OpenClaw 发 close** → 确认平仓 + trade_history 记录
+
+- [ ] **Step 22: OpenClaw 发非法指令**（A 做 sgln_long）→ 确认被拦截，violations 表有记录
+
+- [ ] **Step 23: 检查下次状态文件 warnings 字段** → 确认 OpenClaw 能看到前置警告
 
 ---
 
-## 二、OpenClaw 侧需要做的事
-
-### 1. 读 RULES.md
-
-这是唯一需要读的规范文档。包含完整的 JSON 格式、字段约束、示例。
-
-### 2. 每次会话的流程
-
-```
-1. 读 data/state_for_openclaw.json → 了解当前状态
-2. 分析金价趋势、投资者仓位、warnings
-3. 做决策
-4. 写 data/orders_from_openclaw.json → 格式严格按 RULES.md
-```
-
-### 3. 写文件前的铁律
-
-- `investor` 必须是 `"A"` 或 `"B"`（大写单字母）
-- `action` 必须在权限表内（A 不能 `sgln_long`，B 不能 `cfd_long`）
-- 开仓类必须提供 `margin_pct`（0.0-1.0）
-- CFD 开仓必须提供 `tp` 和 `sl`（金价绝对价格，不是百分比）
-- SGLN 不需要 tp/sl
-- `timestamp` 用 UTC
-
-### 4. 从简单开始
-
-联调顺序：
-
-1. 先发 `idle` → 验证文件被读取
-2. 再发 `cfd_long`（A）+ `idle`（B）→ 验证开仓
-3. 再发 `hold` → 验证维持仓位
-4. 再发 `close` → 验证平仓
-5. 尝试发一个非法指令（A 做 `sgln_long`）→ 验证被拦截，检查 warnings
-
----
-
-## 三、联调验证检查点
+## 一、联调验证检查点
 
 | # | 验证项 | 怎么确认 |
 |---|--------|----------|
@@ -116,13 +206,28 @@ GoldClaw 和 OpenClaw 必须能读写同一个 `data/` 目录。
 
 ---
 
-## 四、推荐联调节奏
+## 二、常见问题排查
 
-```
-第1轮：手动写 JSON → 确认 GoldClaw 能捡起执行
-第2轮：OpenClaw 发 idle → 确认文件交换通路通
-第3轮：OpenClaw 发开仓指令 → 确认交易执行
-第4轮：等几个 tick → 确认盈亏跟踪
-第5轮：OpenClaw 发平仓 → 确认完整闭环
-第6轮：故意发非法指令 → 确认防护机制生效
-```
+| 问题 | 排查 |
+|------|------|
+| 金价获取失败 | 检查网络，确认 `https://api.gold-api.com/price/XAU` 可访问 |
+| 指令没被执行 | 确认文件名是 `orders_from_openclaw.json`（不是别的） |
+| 指令被拒收 | 检查 violations 表，看具体错误原因 |
+| Bridge 连不上 | 确认 bridge 已启动，端口和 URL 一致 |
+| OpenClaw 读不到状态 | 确认 `data/` 路径对 OpenClaw 可读 |
+| 指令过期被丢弃 | timestamp 超过 30 分钟会被丢弃，确保用当前 UTC 时间 |
+
+---
+
+## 三、文件速查
+
+| 文件 | 用途 | 谁读写 |
+|------|------|--------|
+| `.env` | GoldClaw 配置 | 你手动编辑 |
+| `data/goldclaw.db` | SQLite 真相源 | 仅 GoldClaw |
+| `data/state_for_openclaw.json` | 状态报告 | GoldClaw 写，OpenClaw 读 |
+| `data/orders_from_openclaw.json` | 投资决策 | OpenClaw 写，GoldClaw 读 |
+| `data/orders_processed_*.json` | 已处理的决策 | GoldClaw 重命名 |
+| `data/bridge_events.jsonl` | 门铃事件日志 | Bridge 写 |
+| `RULES.md` | 通信规范 | OpenClaw 必读 |
+| `openclaw_bridge.py` | 门铃接收器 | 你启动 |
