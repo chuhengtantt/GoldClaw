@@ -132,7 +132,7 @@
   # 另开一个终端
   python openclaw_bridge.py
   ```
-  期望：`Uvicorn running on http://0.0.0.0:8000`
+  期望：`Uvicorn running on http://0.0.0.0:8088`
 
 - [x] **Step 10: 配置 .env 启用门铃**
   ```

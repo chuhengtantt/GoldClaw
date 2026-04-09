@@ -5,10 +5,10 @@ OpenClaw Bridge — 门铃接收器。
 然后拉起一次 OpenClaw 会话处理紧急事件。
 
 启动：
-    uvicorn openclaw_bridge:app --host 0.0.0.0 --port 8000
+    uvicorn openclaw_bridge:app --host 0.0.0.0 --port 8088
 
 GoldClaw 侧 .env 配置：
-    GOLDCLAW_OPENCLAW_BRIDGE_URL=http://localhost:8000/emergency
+    GOLDCLAW_OPENCLAW_BRIDGE_URL=http://localhost:8088/emergency
 """
 
 import json
@@ -128,5 +128,5 @@ def _trigger_openclaw(event: str, payload: dict) -> None:
 if __name__ == "__main__":
     import uvicorn
 
-    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
+    port = int(sys.argv[1]) if len(sys.argv) > 1 else 8088
     uvicorn.run(app, host="0.0.0.0", port=port)
