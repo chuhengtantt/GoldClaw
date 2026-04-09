@@ -33,9 +33,12 @@ app = FastAPI(title="OpenClaw Bridge")
 # 指向 GoldClaw 的 data/ 目录（默认同项目的 data/）
 DATA_DIR = Path(__file__).parent / "data"
 
-# OpenClaw 触发命令模板（按实际环境修改）
-# 例如：python openclaw_main.py --trigger emergency
-OPENCLAW_TRIGGER_CMD: list[str] | None = None
+# OpenClaw 触发命令：通过 openclaw agent CLI 唤醒 OpenClaw 会话
+# 消息会由 _trigger_openclaw 动态拼接后追加为最后一个参数
+OPENCLAW_TRIGGER_CMD: list[str] = [
+    "openclaw", "agent", "--deliver",
+    "-m",  # placeholder, message will be appended by _trigger_openclaw
+]
 
 
 @app.post("/emergency")
@@ -102,8 +105,25 @@ def _log_event(payload: dict) -> None:
 
 
 def _trigger_openclaw(event: str, payload: dict) -> None:
-    """触发 OpenClaw 会话。"""
-    cmd = OPENCLAW_TRIGGER_CMD + [event]
+    """触发 OpenClaw 会话，拼接完整的紧急消息。"""
+    investor = payload.get("investor", "")
+    price = payload.get("gold_price", 0)
+    message = payload.get("message", "")
+    priority = payload.get("priority", "normal")
+
+    # 拼接描述性消息
+    parts = [f"[GoldClaw 紧急通知] 事件: {event}"]
+    if investor:
+        parts.append(f"投资者: {investor}")
+    if price:
+        parts.append(f"当前金价: ${price:,.2f}")
+    if message:
+        parts.append(f"详情: {message}")
+    if priority:
+        parts.append(f"优先级: {priority}")
+
+    full_message = " | ".join(parts)
+    cmd = OPENCLAW_TRIGGER_CMD + [full_message]
     logger.info("Triggering OpenClaw: %s", cmd)
     try:
         result = subprocess.run(

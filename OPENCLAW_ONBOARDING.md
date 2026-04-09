@@ -152,11 +152,9 @@
   cat data/bridge_events.jsonl
   ```
 
-- [ ] **Step 13: 配置 OPENCLAW_TRIGGER_CMD**
-  编辑 `openclaw_bridge.py`，将 `OPENCLAW_TRIGGER_CMD` 改为 OpenClaw 的触发命令：
-  ```python
-  OPENCLAW_TRIGGER_CMD = ["python", "path/to/openclaw_main.py", "--trigger"]
-  ```
+- [x] **Step 13: 配置 OPENCLAW_TRIGGER_CMD**
+  已配置为 `openclaw agent --deliver -m`，消息由 `_trigger_openclaw` 动态拼接。
+  验证通过：margin_call 事件 → `[GoldClaw 紧急通知] 事件: margin_call | 投资者: A | 当前金价: $4,580.00`
 
 ### 准备 OpenClaw
 
