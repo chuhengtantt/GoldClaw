@@ -56,6 +56,16 @@ def main():
     engine.initialize()
     engine.run_tick()
 
+    # 启动时自动备份
+    from internal.db.backup import backup_database
+    from config.settings import settings
+    backup_dir = os.path.join(os.getcwd(), "backup")
+    try:
+        backup_database(str(settings.db_full_path), backup_dir)
+        logger.info("Startup backup created in %s", backup_dir)
+    except Exception as e:
+        logger.warning("Startup backup failed: %s", e)
+
     scheduler = GoldClawScheduler(engine)
     engine.set_scheduler(scheduler)
     scheduler.start()
@@ -88,6 +98,12 @@ def main():
     # 关闭窗口时优雅退出
     def on_close():
         logger.info("Window closed, shutting down...")
+        # 关闭前备份
+        try:
+            backup_database(str(settings.db_full_path), backup_dir)
+            logger.info("Shutdown backup created")
+        except Exception as e:
+            logger.warning("Shutdown backup failed: %s", e)
         scheduler.shutdown()
         engine.shutdown()
 

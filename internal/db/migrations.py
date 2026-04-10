@@ -106,13 +106,24 @@ MIGRATIONS = [
         updated_at TEXT NOT NULL
     );
     """,
+    "ALTER TABLE trade_history ADD COLUMN tp REAL DEFAULT 0",
+    "ALTER TABLE trade_history ADD COLUMN sl REAL DEFAULT 0",
 ]
 
 
 def run_migrations(conn: sqlite3.Connection) -> None:
-    """执行所有建表 SQL。幂等——已存在的表不会报错。"""
+    """执行所有建表 SQL。幂等——已存在的表不会报错。CREATE IF NOT EXISTS 跳过，ALTER 忽略重复列。"""
     for sql in MIGRATIONS:
-        conn.executescript(sql)
+        sql_stripped = sql.strip()
+        if sql_stripped.upper().startswith("ALTER"):
+            # ALTER TABLE: 单语句，重复列静默跳过
+            try:
+                conn.execute(sql_stripped)
+            except Exception:
+                pass
+        else:
+            # CREATE TABLE / CREATE INDEX: 多语句，用 executescript
+            conn.executescript(sql)
 
 
 def seed_initial_data(conn: sqlite3.Connection, investors: dict[str, float]) -> None:

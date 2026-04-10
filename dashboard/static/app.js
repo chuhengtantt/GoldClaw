@@ -191,6 +191,14 @@ async function loadInvestors() {
       const badge = document.getElementById(`actionBadge${id}`);
       badge.textContent = actionLabel(inv.current_action);
       badge.className = `action-badge ${inv.current_action}`;
+
+      // TP/SL
+      const tpslEl = document.getElementById(`tpsl${id}`);
+      if (tpslEl) {
+        const tp = inv.tp && inv.tp > 0 ? fmtUSD2(inv.tp) : '--';
+        const sl = inv.sl && inv.sl > 0 ? fmtUSD2(inv.sl) : '--';
+        tpslEl.textContent = `TP:${tp}  SL:${sl}`;
+      }
     }
   } catch (e) {
     console.error('Failed to load investors:', e);
@@ -213,8 +221,8 @@ async function loadTrades(investorId) {
           <td>${fmtUSD(t.total_assets_after)}</td>
           <td><span class="action-badge ${t.action} btn-sm">${actionLabel(t.action)}</span></td>
           <td>${t.margin_committed ? fmtUSD(t.margin_committed) : '--'}</td>
-          <td>${t.entry_price ? fmtUSD2(t.entry_price) : '--'}</td>
-          <td>${t.exit_price ? fmtUSD2(t.exit_price) : '--'}</td>
+          <td>${t.tp && t.tp > 0 ? fmtUSD2(t.tp) : '--'}</td>
+          <td>${t.sl && t.sl > 0 ? fmtUSD2(t.sl) : '--'}</td>
         </tr>
       `).join('');
     }
@@ -535,6 +543,77 @@ document.getElementById('configModal').addEventListener('click', function(e) {
   if (e.target === this) closeConfigModal();
 });
 
+// === Backup Modal ===
+async function openBackupModal() {
+  document.getElementById('backupModal').classList.add('active');
+  loadBackupList();
+}
+
+function closeBackupModal() {
+  document.getElementById('backupModal').classList.remove('active');
+}
+
+async function loadBackupList() {
+  const container = document.getElementById('backupList');
+  try {
+    const data = await fetchJSON(`${API}/backups`);
+    if (data.backups.length === 0) {
+      container.innerHTML = '<div style="text-align:center;color:var(--color-muted);padding:24px;">暂无备份</div>';
+      return;
+    }
+    container.innerHTML = '<table class="data-table" style="font-size:13px;"><thead><tr><th>时间</th><th>大小</th><th>操作</th></tr></thead><tbody>' +
+      data.backups.map(b => `
+        <tr>
+          <td>${b.time}</td>
+          <td>${b.size_label}</td>
+          <td><button class="btn btn-outline btn-sm" onclick="restoreBackup('${b.filename}')" style="font-size:11px;padding:2px 8px;">恢复</button></td>
+        </tr>
+      `).join('') +
+      '</tbody></table>';
+  } catch (e) {
+    container.innerHTML = '<div style="color:#e23b4a;padding:12px;">加载失败: ' + e.message + '</div>';
+  }
+}
+
+async function createBackup() {
+  try {
+    const resp = await fetch(`${API}/backup`, { method: 'POST' });
+    const result = await resp.json();
+    if (result.ok) {
+      alert('备份成功');
+      loadBackupList();
+    } else {
+      alert('备份失败: ' + (result.detail || '未知错误'));
+    }
+  } catch (e) {
+    alert('备份失败: ' + e.message);
+  }
+}
+
+async function restoreBackup(filename) {
+  if (!confirm(`确认从 ${filename} 恢复数据库？当前数据将被覆盖。`)) return;
+  try {
+    const resp = await fetch(`${API}/backup/restore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ filename }),
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      alert('恢复成功，正在刷新...');
+      refreshAll();
+    } else {
+      alert('恢复失败: ' + (result.detail || '未知错误'));
+    }
+  } catch (e) {
+    alert('恢复失败: ' + e.message);
+  }
+}
+
+document.getElementById('backupModal').addEventListener('click', function(e) {
+  if (e.target === this) closeBackupModal();
+});
+
 // === Refresh ===
 async function refreshAll() {
   await Promise.all([
@@ -545,6 +624,10 @@ async function refreshAll() {
     loadTrades('B'),
     state.commView === 'day' ? loadCommLog() : loadCommGrid(state.commView),
   ]);
+  const now = new Date();
+  const ts = now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0') + ':' + now.getSeconds().toString().padStart(2,'0');
+  const el = document.getElementById('lastRefresh');
+  if (el) el.textContent = '已刷新 ' + ts;
 }
 
 // === Auto Refresh ===

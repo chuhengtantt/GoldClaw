@@ -337,6 +337,58 @@ async def health():
 
 
 # ============================================================
+# 数据库备份 API
+# ============================================================
+
+BACKUP_DIR = Path(settings.db_full_path).parent.parent / "backup"
+
+
+@app.get("/api/backups")
+async def get_backups():
+    """列出所有备份文件。"""
+    from internal.db.backup import list_backups
+    backups = list_backups(BACKUP_DIR)
+    return {"backups": backups, "total": len(backups)}
+
+
+@app.post("/api/backup")
+async def create_backup():
+    """立即创建一次备份。"""
+    from internal.db.backup import backup_database
+    try:
+        path = backup_database(settings.db_full_path, BACKUP_DIR)
+        return {"ok": True, "path": path}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/backup/restore")
+async def restore_from_backup(request: Request):
+    """从指定备份恢复数据库。"""
+    body = await request.json()
+    filename = body.get("filename")
+    if not filename:
+        raise HTTPException(status_code=400, detail="filename required")
+
+    # 安全检查：只允许 goldclaw_*.db 文件名
+    if not filename.startswith("goldclaw_") or not filename.endswith(".db"):
+        raise HTTPException(status_code=400, detail="invalid filename")
+    if "/" in filename or "\\" in filename:
+        raise HTTPException(status_code=400, detail="invalid filename")
+
+    backup_path = BACKUP_DIR / filename
+    if not backup_path.exists():
+        raise HTTPException(status_code=404, detail="backup not found")
+
+    from internal.db.backup import restore_database
+    try:
+        restore_database(settings.db_full_path, backup_path)
+        return {"ok": True, "restored_from": filename}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================================
 # 启动入口
 # ============================================================
 

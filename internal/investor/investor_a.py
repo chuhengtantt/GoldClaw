@@ -119,6 +119,8 @@ class InvestorA(BaseInvestor):
             margin_committed=actual_margin,
             cash_after=round(new_cash, 2),
             total_assets_after=round(total, 2),
+            tp=tp,
+            sl=sl,
         )
         logger.info(
             "Investor A opened %s: margin=%.2f, actual=%.2f, entry=%.2f",

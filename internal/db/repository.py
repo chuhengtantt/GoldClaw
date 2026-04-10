@@ -42,8 +42,8 @@ class InvestorRepository:
             "INSERT INTO trade_history "
             "(timestamp, investor_id, action, gold_price, entry_price, exit_price, "
             "margin_committed, nominal_pnl, net_pnl, fees_total, cash_after, total_assets_after, "
-            "trigger_reason, signal_strength, signal_type, reasoning) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "trigger_reason, signal_strength, signal_type, reasoning, tp, sl) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 now, investor_id, action, gold_price,
                 details.get("entry_price"),
@@ -58,6 +58,8 @@ class InvestorRepository:
                 details.get("signal_strength"),
                 details.get("signal_type"),
                 details.get("reasoning"),
+                details.get("tp", 0),
+                details.get("sl", 0),
             ),
         )
 

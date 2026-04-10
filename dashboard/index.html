@@ -21,7 +21,9 @@
     <div class="header-right">
       <button class="btn btn-outline btn-sm" onclick="openLogModal()">日志管理</button>
       <button class="btn btn-outline btn-sm" onclick="openConfigModal()">参数配置</button>
+      <button class="btn btn-outline btn-sm" onclick="openBackupModal()">数据备份</button>
       <button class="btn btn-primary btn-sm" onclick="refreshAll()">刷新</button>
+      <span id="lastRefresh" style="font-size:11px;color:#8d969e;margin-left:8px;"></span>
     </div>
   </header>
 
@@ -76,6 +78,7 @@
               <div class="investor-summary">
                 <span class="investor-asset" id="totalAssetsA">$--</span>
                 <span id="pnlA" class="pnl-positive">--</span>
+                <span id="tpslA" class="tpsl-info" style="font-size:12px; color:var(--color-secondary); margin-left:8px;">TP:-- SL:--</span>
               </div>
               <div class="table-wrap">
                 <table class="data-table">
@@ -111,6 +114,7 @@
               <div class="investor-summary">
                 <span class="investor-asset" id="totalAssetsB">$--</span>
                 <span id="pnlB" class="pnl-positive">--</span>
+                <span id="tpslB" class="tpsl-info" style="font-size:12px; color:var(--color-secondary); margin-left:8px;">TP:-- SL:--</span>
               </div>
               <div class="table-wrap">
                 <table class="data-table">
@@ -215,6 +219,21 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeLogModal()">取消</button>
         <button class="btn btn-danger" onclick="clearLogs()">确认清除</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Backup Modal -->
+  <div class="modal-overlay" id="backupModal">
+    <div class="modal" style="max-width:480px;">
+      <h2>数据备份</h2>
+      <p style="font-size:13px; color:var(--color-muted); margin-bottom:16px;">备份目录: ~/GoldClaw/backup/ — 保留最近 10 份</p>
+      <div style="margin-bottom:16px;">
+        <button class="btn btn-primary btn-sm" onclick="createBackup()">立即备份</button>
+      </div>
+      <div id="backupList" style="max-height:300px; overflow-y:auto;"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeBackupModal()">关闭</button>
       </div>
     </div>
   </div>
