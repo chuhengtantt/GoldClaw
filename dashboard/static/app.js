@@ -655,6 +655,12 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshAll();
   startAutoRefresh(30000);
   initResizeHandles();
+
+  // pywebview WKWebView 在后台会暂停 JS timer，切回窗口时手动刷新
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) refreshAll();
+  });
+  window.addEventListener('focus', () => refreshAll());
 });
 
 // === Resize Handles ===
