@@ -1,10 +1,10 @@
 # GoldClaw
 
-<img width="1280" height="982" alt="telegram-cloud-photo-size-4-5978641587988270154-y" src="https://github.com/user-attachments/assets/17242596-a6b1-4d8c-bdae-6d864c9c5ae3" />
-<img width="1280" height="982" alt="telegram-cloud-photo-size-4-5978641587988270154-y" src="https://github.com/user-attachments/assets/b013d811-6315-475a-8544-88cf2d760500" />
-<img width="1280" height="982" alt="telegram-cloud-photo-size-4-5978641587988270154-y" src="https://github.com/user-attachments/assets/a022997d-4bd8-4102-a7ab-f1ffac4be189" />
-<img width="1280" height="982" alt="telegram-cloud-photo-size-4-5978641587988270154-y" src="https://github.com/user-attachments/assets/362b66c3-088a-4203-84c6-e9879f47d085" />
 
+<img width="1491" height="993" alt="截屏2026-04-15 09 47 36" src="https://github.com/user-attachments/assets/d9cb740e-5044-44e8-8a53-64be8237e7c6" />
+<img width="1496" height="991" alt="截屏2026-04-15 09 47 16" src="https://github.com/user-attachments/assets/789dbe20-ffc5-420b-a7d0-d3d84d3e2d76" />
+<img width="1495" height="996" alt="截屏2026-04-15 09 48 02" src="https://github.com/user-attachments/assets/d6c6f8c5-2e03-4495-8bc4-305530eb96f4" />
+<img width="1501" height="995" alt="截屏2026-04-15 09 47 47" src="https://github.com/user-attachments/assets/fbe01d0d-2f03-46f2-9baf-500e50a93245" />
 
 
 
