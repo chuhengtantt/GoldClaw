@@ -1,5 +1,6 @@
 # GoldClaw
 
+[English Documentation](README_EN.md)
 
 <img width="1496" height="991" alt="截屏2026-04-15 09 47 16" src="https://github.com/user-attachments/assets/789dbe20-ffc5-420b-a7d0-d3d84d3e2d76" />
 
