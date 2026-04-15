@@ -1,9 +1,16 @@
 # GoldClaw
 
-<img width="1504" height="905" alt="image" src="https://github.com/user-attachments/assets/0065e9c0-1ddd-4cd5-b932-e7378b28ec67" />
-<img width="1514" height="908" alt="image" src="https://github.com/user-attachments/assets/72ed91f4-79fb-429c-9830-c41ea68107b4" />
-<img width="1517" height="900" alt="image" src="https://github.com/user-attachments/assets/173630bc-8643-44e3-a733-044df3fd92f8" />
-<img width="1508" height="901" alt="image" src="https://github.com/user-attachments/assets/2062b9fd-96ce-4d50-b4a9-0b276823fb06" />
+<img width="1280" height="982" alt="telegram-cloud-photo-size-4-5978641587988270154-y" src="https://github.com/user-attachments/assets/17242596-a6b1-4d8c-bdae-6d864c9c5ae3" />
+<img width="1280" height="982" alt="telegram-cloud-photo-size-4-5978641587988270154-y" src="https://github.com/user-attachments/assets/b013d811-6315-475a-8544-88cf2d760500" />
+<img width="1280" height="982" alt="telegram-cloud-photo-size-4-5978641587988270154-y" src="https://github.com/user-attachments/assets/a022997d-4bd8-4102-a7ab-f1ffac4be189" />
+<img width="1280" height="982" alt="telegram-cloud-photo-size-4-5978641587988270154-y" src="https://github.com/user-attachments/assets/362b66c3-088a-4203-84c6-e9879f47d085" />
+
+
+
+
+
+
+
 
 
 
