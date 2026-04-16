@@ -174,6 +174,15 @@ class Engine:
              f'{{"state": "{self._system_state.value}", "price": {price}}}', now),
         )
 
+        # 8.6 记录投资者资产快照（每个 tick）
+        for inv in investors:
+            s = inv.state
+            conn.execute(
+                "INSERT INTO investor_snapshots (timestamp, investor_id, total_assets, action) "
+                "VALUES (?, ?, ?, ?)",
+                (now, inv.investor_id, s["total_assets"], s["current_action"]),
+            )
+
         # 9. 更新 system_state 表
         repo = InvestorRepository(conn)
         conn.execute(

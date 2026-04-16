@@ -113,6 +113,38 @@ async def get_latest_price():
 
 
 # ============================================================
+# 投资者资产历史 API
+# ============================================================
+
+@app.get("/api/asset-history")
+async def get_asset_history(range: str = Query("day", pattern="^(day|week|month)$")):
+    """获取投资者 A/B 资产变化历史（含决策标注）。"""
+    repo = _get_repo()
+    try:
+        now = datetime.now(timezone.utc)
+        if range == "day":
+            since = (now - timedelta(days=1)).isoformat()
+        elif range == "week":
+            since = (now - timedelta(weeks=1)).isoformat()
+        else:
+            since = (now - timedelta(days=30)).isoformat()
+
+        rows = repo.get_asset_history(since=since)
+        data: dict[str, list[dict]] = {"A": [], "B": []}
+        for row in rows:
+            inv_id = row["investor_id"]
+            if inv_id in data:
+                data[inv_id].append({
+                    "time": row["timestamp"],
+                    "assets": row["total_assets"],
+                    "action": row["action"],
+                })
+        return {"range": range, "data": data}
+    finally:
+        _close_conn(repo)
+
+
+# ============================================================
 # 投资者 API
 # ============================================================
 

@@ -108,6 +108,16 @@ MIGRATIONS = [
     """,
     "ALTER TABLE trade_history ADD COLUMN tp REAL DEFAULT 0",
     "ALTER TABLE trade_history ADD COLUMN sl REAL DEFAULT 0",
+    """
+    CREATE TABLE IF NOT EXISTS investor_snapshots (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        timestamp   TEXT NOT NULL,
+        investor_id TEXT NOT NULL,
+        total_assets REAL NOT NULL,
+        action      TEXT NOT NULL DEFAULT 'idle'
+    );
+    CREATE INDEX IF NOT EXISTS idx_snapshots_time ON investor_snapshots(timestamp);
+    """,
 ]
 
 

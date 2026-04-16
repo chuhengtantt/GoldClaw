@@ -124,6 +124,25 @@ class DashboardRepository:
             ).fetchall()
         return rows, total
 
+    def get_asset_history(self, since: str | None = None) -> list[sqlite3.Row]:
+        """获取投资者资产历史，合并 snapshots + trade_history，按时间正序。"""
+        where = ""
+        params: list[str] = []
+        if since:
+            where = " WHERE timestamp >= ?"
+            params.append(since)
+
+        query = (
+            "SELECT investor_id, timestamp, total_assets, action FROM ("
+            "  SELECT investor_id, timestamp, total_assets, action FROM investor_snapshots"
+            f"  {where}"
+            "  UNION ALL"
+            "  SELECT investor_id, timestamp, total_assets_after as total_assets, action FROM trade_history"
+            f"  {where}"
+            ") ORDER BY timestamp ASC"
+        )
+        return self._conn.execute(query, params + params).fetchall()
+
     def get_comm_log(self, page: int = 1, size: int = 50) -> tuple[list[sqlite3.Row], int]:
         """获取通讯日志，返回 (rows, total_count)。"""
         offset = (page - 1) * size

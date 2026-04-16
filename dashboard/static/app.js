@@ -24,6 +24,11 @@ const I18N = {
     'chart.week': '周视图',
     'chart.month': '月视图',
     'chart.records': '{count} 条记录',
+    // Asset chart
+    'asset.title': '投资者资产曲线',
+    'asset.a': '投资者 A',
+    'asset.b': '投资者 B',
+    'asset.noData': '暂无资产历史数据',
     // Investors
     'inv.a.title': '投资者 A',
     'inv.a.subtitle': '趋势收割者 · CFD 1:20',
@@ -98,6 +103,11 @@ const I18N = {
     'chart.week': 'Week',
     'chart.month': 'Month',
     'chart.records': '{count} records',
+    // Asset chart
+    'asset.title': 'Investor Asset Curve',
+    'asset.a': 'Investor A',
+    'asset.b': 'Investor B',
+    'asset.noData': 'No asset history data',
     'inv.a.title': 'Investor A',
     'inv.a.subtitle': 'Trend Harvester · CFD 1:20',
     'inv.b.title': 'Investor B',
@@ -191,6 +201,7 @@ function applyLang() {
 // === State ===
 const state = {
   priceRange: 'day',
+  assetRange: 'day',
   pageA: 1,
   pageB: 1,
   pageComm: 1,
@@ -199,6 +210,7 @@ const state = {
   commPageSize: 30,
   refreshInterval: null,
   priceChart: null,
+  assetChart: null,
 };
 
 // === API Helpers ===
@@ -351,9 +363,159 @@ async function loadPrices() {
 
 function switchRange(range, btn) {
   state.priceRange = range;
-  document.querySelectorAll('.range-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#panelChart .range-tab').forEach(t => t.classList.remove('active'));
   btn.classList.add('active');
   loadPrices();
+}
+
+// === Investor Asset History Chart ===
+async function loadAssetChart() {
+  try {
+    const data = await fetchJSON(`${API}/asset-history?range=${state.assetRange}`);
+    const subtitle = document.getElementById('assetChartSubtitle');
+
+    const allPoints = [...(data.data.A || []), ...(data.data.B || [])].sort(
+      (a, b) => new Date(a.time) - new Date(b.time)
+    );
+
+    if (allPoints.length === 0) {
+      subtitle.textContent = t('asset.noData');
+      if (state.assetChart) {
+        state.assetChart.data.labels = [];
+        state.assetChart.data.datasets[0].data = [];
+        state.assetChart.data.datasets[1].data = [];
+        state.assetChart.update('none');
+      }
+      return;
+    }
+
+    const labels = [...new Set(allPoints.map(p => fmtDateTime(p.time)))];
+    const dataA = data.data.A || [];
+    const dataB = data.data.B || [];
+
+    const actionLabelMap = {
+      cfd_long: 'LONG', cfd_short: 'SHORT', sgln_long: 'SGLN', close: 'CLOSE',
+    };
+
+    function buildDataset(points, color, label) {
+      const dataMap = {};
+      const actionMap = {};
+      points.forEach(p => {
+        const lbl = fmtDateTime(p.time);
+        dataMap[lbl] = p.assets;
+        actionMap[lbl] = actionLabelMap[p.action] || '';
+      });
+      return {
+        label,
+        data: labels.map(lbl => dataMap[lbl] ?? null),
+        borderColor: color,
+        borderWidth: 2,
+        pointRadius: labels.map(lbl => actionMap[lbl] ? 5 : 0),
+        pointBackgroundColor: color,
+        pointBorderColor: '#fff',
+        pointBorderWidth: 1,
+        pointHoverRadius: 6,
+        tension: 0.2,
+        fill: false,
+        spanGaps: true,
+        _actions: labels.map(lbl => actionMap[lbl] || ''),
+      };
+    }
+
+    const datasetA = buildDataset(dataA, '#8B5CF6', t('asset.a'));
+    const datasetB = buildDataset(dataB, '#3B82F6', t('asset.b'));
+
+    subtitle.textContent = t('chart.records', { count: allPoints.length });
+
+    if (state.assetChart) {
+      state.assetChart.data.labels = labels;
+      state.assetChart.data.datasets = [datasetA, datasetB];
+      state.assetChart.update('none');
+    } else {
+      const ctx = document.getElementById('assetChart').getContext('2d');
+      state.assetChart = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets: [datasetA, datasetB] },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'index', intersect: false },
+          plugins: {
+            legend: {
+              display: true,
+              position: 'top',
+              labels: { font: { family: 'Inter', size: 11 }, boxWidth: 12, padding: 12 },
+            },
+            tooltip: {
+              backgroundColor: '#191c1f',
+              titleFont: { family: 'Inter', size: 12 },
+              bodyFont: { family: 'Inter', size: 12 },
+              padding: 10,
+              cornerRadius: 8,
+              callbacks: {
+                afterBody: function(items) {
+                  const lines = [];
+                  items.forEach(item => {
+                    const actions = item.dataset._actions;
+                    if (actions && actions[item.dataIndex]) {
+                      lines.push(`  ${item.dataset.label}: ${actions[item.dataIndex]}`);
+                    }
+                  });
+                  return lines;
+                },
+              },
+            },
+          },
+          scales: {
+            x: {
+              display: true,
+              grid: { display: false },
+              ticks: { font: { family: 'Inter', size: 10 }, color: '#8d969e', maxTicksLimit: 6 },
+            },
+            y: {
+              display: true,
+              grid: { color: '#f4f4f4' },
+              ticks: {
+                font: { family: 'Inter', size: 10 },
+                color: '#8d969e',
+                callback: v => '$' + v.toLocaleString(),
+              },
+            },
+          },
+        },
+        plugins: [{
+          id: 'decisionLabels',
+          afterDraw: (chart) => {
+            const ctx = chart.ctx;
+            chart.data.datasets.forEach((dataset, di) => {
+              const meta = chart.getDatasetMeta(di);
+              if (!dataset._actions) return;
+              dataset._actions.forEach((action, idx) => {
+                if (!action || !meta.data[idx]) return;
+                const point = meta.data[idx];
+                ctx.save();
+                ctx.font = '600 9px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillStyle = dataset.borderColor;
+                const y = di === 0 ? point.y - 10 : point.y + 14;
+                ctx.fillText(action, point.x, y);
+                ctx.restore();
+              });
+            });
+          },
+        }],
+      });
+    }
+  } catch (e) {
+    console.error('Failed to load asset chart:', e);
+  }
+}
+
+function switchAssetRange(range, btn) {
+  state.assetRange = range;
+  document.querySelectorAll('#panelAssetChart .range-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  loadAssetChart();
 }
 
 // === Investors ===
@@ -789,6 +951,7 @@ async function refreshAll() {
   await Promise.all([
     loadSystem(),
     loadPrices(),
+    loadAssetChart(),
     loadInvestors(),
     loadTrades('A'),
     loadTrades('B'),
@@ -814,6 +977,7 @@ function switchTab(tab, btn) {
   if (tab === 'asset') {
     document.getElementById('tabAsset').classList.add('active');
     if (state.priceChart) setTimeout(() => state.priceChart.resize(), 50);
+    if (state.assetChart) setTimeout(() => state.assetChart.resize(), 60);
   } else {
     document.getElementById('tabComm').classList.add('active');
   }
@@ -835,15 +999,15 @@ document.addEventListener('DOMContentLoaded', () => {
 // === Resize Handles ===
 function initResizeHandles() {
   const topSection = document.getElementById('topSection');
-  const panelChart = document.getElementById('panelChart');
+  const chartsColumn = document.getElementById('chartsColumn');
   const panelInvestors = document.getElementById('panelInvestors');
   const handleH = document.getElementById('resizeHandle');
 
-  if (handleH && topSection) {
+  if (handleH && topSection && chartsColumn) {
     makeDraggable(handleH, (dx) => {
       const totalWidth = topSection.offsetWidth - handleH.offsetWidth;
-      const currentChartFlex = parseFloat(panelChart.style.flexGrow) || 3;
-      const currentInvFlex = parseFloat(panelInvestors.style.flexGrow) || 2;
+      const currentChartFlex = parseFloat(chartsColumn.style.flexGrow) || 2;
+      const currentInvFlex = parseFloat(panelInvestors.style.flexGrow) || 3;
       const totalFlex = currentChartFlex + currentInvFlex;
 
       const ratio = dx / totalWidth;
@@ -851,14 +1015,36 @@ function initResizeHandles() {
       const newChartFlex = Math.max(1, currentChartFlex + delta);
       const newInvFlex = Math.max(0.5, totalFlex - newChartFlex);
 
-      panelChart.style.flexGrow = newChartFlex;
+      chartsColumn.style.flexGrow = newChartFlex;
       panelInvestors.style.flexGrow = newInvFlex;
     });
 
     handleH.addEventListener('dblclick', () => {
-      panelChart.style.flexGrow = 3;
-      panelInvestors.style.flexGrow = 2;
+      chartsColumn.style.flexGrow = 2;
+      panelInvestors.style.flexGrow = 3;
       if (state.priceChart) state.priceChart.resize();
+      if (state.assetChart) state.assetChart.resize();
+    });
+  }
+
+  // Vertical handle: price chart ↔ asset chart
+  const panelChartEl = document.getElementById('panelChart');
+  const panelAssetChart = document.getElementById('panelAssetChart');
+  const handleChart = document.getElementById('resizeHandleChart');
+
+  if (handleChart && panelChartEl && panelAssetChart && chartsColumn) {
+    makeDraggable(handleChart, (_dx, dy) => {
+      const currentPriceH = panelChartEl.offsetHeight;
+      const newPriceH = Math.max(80, currentPriceH + dy);
+      panelChartEl.style.flex = `0 0 ${newPriceH}px`;
+      panelAssetChart.style.flex = '1 1 0';
+    });
+
+    handleChart.addEventListener('dblclick', () => {
+      panelChartEl.style.flex = '';
+      panelAssetChart.style.flex = '';
+      if (state.priceChart) state.priceChart.resize();
+      if (state.assetChart) state.assetChart.resize();
     });
   }
 
@@ -924,6 +1110,7 @@ function makeDraggable(handle, onMove) {
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
       if (state.priceChart) state.priceChart.resize();
+      if (state.assetChart) state.assetChart.resize();
     };
 
     document.addEventListener('mousemove', onMouseMove);

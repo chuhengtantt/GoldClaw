@@ -40,22 +40,50 @@
     <div class="tab-page active" id="tabAsset">
       <div class="asset-layout" id="topSection">
 
-        <!-- Price Chart Card -->
-        <div class="card panel-chart" id="panelChart">
-          <div class="card-header">
-            <div>
-              <div class="card-title" data-i18n="chart.title">金价记录折线图</div>
-              <div class="card-subtitle" id="chartSubtitle" data-i18n="chart.loading">加载中...</div>
+        <!-- Left Column: Charts (top: price, bottom: asset history) -->
+        <div class="charts-column" id="chartsColumn">
+
+          <!-- Price Chart Card -->
+          <div class="card panel-chart" id="panelChart">
+            <div class="card-header">
+              <div>
+                <div class="card-title" data-i18n="chart.title">金价记录折线图</div>
+                <div class="card-subtitle" id="chartSubtitle" data-i18n="chart.loading">加载中...</div>
+              </div>
+              <div class="range-tabs">
+                <button class="range-tab active" data-range="day" onclick="switchRange('day', this)" data-i18n="chart.day">日视图</button>
+                <button class="range-tab" data-range="week" onclick="switchRange('week', this)" data-i18n="chart.week">周视图</button>
+                <button class="range-tab" data-range="month" onclick="switchRange('month', this)" data-i18n="chart.month">月视图</button>
+              </div>
             </div>
-            <div class="range-tabs">
-              <button class="range-tab active" data-range="day" onclick="switchRange('day', this)" data-i18n="chart.day">日视图</button>
-              <button class="range-tab" data-range="week" onclick="switchRange('week', this)" data-i18n="chart.week">周视图</button>
-              <button class="range-tab" data-range="month" onclick="switchRange('month', this)" data-i18n="chart.month">月视图</button>
+            <div class="chart-container">
+              <canvas id="priceChart"></canvas>
             </div>
           </div>
-          <div class="chart-container">
-            <canvas id="priceChart"></canvas>
+
+          <!-- Vertical Resize Handle (Price ↔ Asset) -->
+          <div class="resize-handle-h" id="resizeHandleChart">
+            <div class="resize-grip-h"></div>
           </div>
+
+          <!-- Investor Asset History Chart -->
+          <div class="card panel-asset-chart" id="panelAssetChart">
+            <div class="card-header">
+              <div>
+                <div class="card-title" data-i18n="asset.title">投资者资产曲线</div>
+                <div class="card-subtitle" id="assetChartSubtitle"></div>
+              </div>
+              <div class="range-tabs">
+                <button class="range-tab active" onclick="switchAssetRange('day', this)" data-i18n="chart.day">日视图</button>
+                <button class="range-tab" onclick="switchAssetRange('week', this)" data-i18n="chart.week">周视图</button>
+                <button class="range-tab" onclick="switchAssetRange('month', this)" data-i18n="chart.month">月视图</button>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="assetChart"></canvas>
+            </div>
+          </div>
+
         </div>
 
         <!-- Resize Handle -->

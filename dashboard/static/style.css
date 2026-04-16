@@ -193,15 +193,30 @@ html, body {
   min-height: 0;
 }
 
-.panel-chart {
-  flex: 3 1 0;
-  min-width: 280px;
+.charts-column {
+  flex: 2 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 360px;
+  overflow: hidden;
+}
+
+.charts-column .panel-chart {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.panel-asset-chart {
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 
 .panel-investors {
-  flex: 2 1 0;
-  min-width: 260px;
+  flex: 3 1 0;
+  min-width: 280px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
