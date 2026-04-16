@@ -49,9 +49,10 @@ Open http://localhost:8089/dashboard/ in your browser.
 
 | Page | Features |
 |------|----------|
-| **Assets** | Gold price line chart (red=up, green=down), Investor A/B positions and trade history |
+| **Assets** | Gold price line chart (red=up, green=down), Investor A/B asset curve (with decision labels), positions and trade history |
 | **Communication** | GoldClaw ↔ OpenClaw comm log (day/week/month views) |
 | **Settings** | Modify scheduling intervals, state machine thresholds at runtime |
+| **Backup** | Manual create/restore database backups, auto backup on start/shutdown |
 
 ---
 

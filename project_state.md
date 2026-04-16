@@ -7,8 +7,8 @@
 
 ## 当前阶段
 
-**v0.2.0 已发布** — 核心引擎 + Dashboard + 原生窗口 + DMG 打包全部完成。
-GitHub Release: https://github.com/chuhengtantt/GoldClaw/releases/tag/v0.2.0
+**v0.4.0 已发布** — 核心引擎 + Dashboard + 原生窗口 + DMG 打包 + 备份 + i18n + 资产曲线全部完成。
+GitHub Release: https://github.com/chuhengtantt/GoldClaw/releases/tag/v0.4.0
 
 ### 当前运行状态
 - **GoldClaw.app**: macOS 原生应用，pywebview 窗口（端口 8089）
@@ -44,6 +44,30 @@ GitHub Release: https://github.com/chuhengtantt/GoldClaw/releases/tag/v0.2.0
 - DMG 安装包（hdiutil，含 Applications 快捷方式）
 - 应用图标（金色爪痕 + 暗色背景）
 - 数据目录 ~/GoldClaw/（.app 启动时自动使用）
+### 切片 12: 数据库备份系统 ✅
+- `internal/db/backup.py`：WAL checkpoint + 文件复制 + 滚动保留（最多 10 份）
+- 自动备份：启动时 + 关闭时
+- 手动备份：Dashboard 备份按钮（创建/列出/恢复）
+- 备份文件命名：`goldclaw_YYYYMMDD_HHMMSS.db`
+- 备份目录：`~/GoldClaw/backup/`
+- API 端点：`GET /api/backups`、`POST /api/backup`、`POST /api/backup/restore`
+### 切片 13: 中英文语言切换 ✅
+- Dashboard i18n 系统：`data-i18n` HTML 属性 + JS 翻译字典
+- 支持中文/英文一键切换，状态持久化到 localStorage
+- 所有 UI 文本可翻译（标题、标签、按钮、状态名）
+- 语言切换按钮在 Header 右侧
+### 切片 14: 投资者资产曲线图 ✅
+- A/B 双线折线图（紫色=A #8B5CF6，蓝色=B #3B82F6）
+- 决策标注点（LONG/SHORT/CLOSE/SGLN 标签）
+- 日/周/月视图切换
+- Chart.js 自定义 plugin 绘制决策标签
+- 数据源：`investor_snapshots` + `trade_history` UNION 查询
+- API 端点：`GET /api/asset-history?range=day|week|month`
+### 切片 15: 每 tick 资产快照 ✅
+- 新增 `investor_snapshots` 表（每 tick INSERT 投资者总资产 + 持仓动作）
+- `get_asset_history()` 合并 investor_snapshots + trade_history，按时间正序
+- Dashboard 布局改为左列上下结构：金价图（上）+ 资产曲线图（下）+ 右侧投资者卡片
+- 金价图与资产图之间可拖拽垂直 resize handle
 
 ---
 
@@ -84,6 +108,7 @@ GitHub Release: https://github.com/chuhengtantt/GoldClaw/releases/tag/v0.2.0
 | `price_ticks` | 金价 tick 历史（Dashboard 数据源） | INSERT Only |
 | `comm_log` | 通讯日志（所有方向的事件记录） | INSERT Only |
 | `runtime_config` | 运行时参数配置（Dashboard 可修改） | UPSERT |
+| `investor_snapshots` | 投资者资产快照（每 tick 记录） | INSERT Only |
 
 ---
 
@@ -105,6 +130,10 @@ GitHub Release: https://github.com/chuhengtantt/GoldClaw/releases/tag/v0.2.0
 | GET | `/api/config` | 获取运行时参数 |
 | PATCH | `/api/config` | 修改运行时参数 |
 | POST | `/api/config/reset` | 恢复默认参数 |
+| GET | `/api/asset-history?range=day\|week\|month` | 投资者资产历史曲线 |
+| GET | `/api/backups` | 列出备份文件 |
+| POST | `/api/backup` | 手动创建备份 |
+| POST | `/api/backup/restore` | 从备份恢复数据库 |
 | POST | `/emergency` | 紧急通知（Bridge 端点） |
 | GET | `/health` | 健康检查 |
 
@@ -196,7 +225,8 @@ GoldClaw/
 │   ├── db/
 │   │   ├── connection.py            # SQLite WAL
 │   │   ├── migrations.py            # 建表 + 初始数据
-│   │   └── repository.py            # InvestorRepository + DashboardRepository
+│   │   ├── repository.py            # InvestorRepository + DashboardRepository
+│   │   └── backup.py                # 备份/恢复/滚动保留
 │   ├── exchange/
 │   │   ├── schema.py                # Pydantic Schema
 │   │   ├── webhook_client.py        # 信箱读写 + 门铃 POST

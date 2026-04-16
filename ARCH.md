@@ -17,7 +17,7 @@
 | 配置管理 | pydantic-settings + .env | 类型安全的环境变量 |
 | Dashboard API | FastAPI + uvicorn | REST API 端口 8089，Dashboard + Bridge 统一进程 |
 | 原生窗口 | pywebview (WKWebView) | macOS 原生窗口，替代浏览器 |
-| 前端 | Chart.js + 原生 CSS | Revolut 风格设计系统 |
+| 前端 | Chart.js + 原生 CSS | Revolut 风格设计系统，中英文 i18n |
 | 打包 | PyInstaller + hdiutil | macOS .app + DMG 分发 |
 | 版本管理 | Git | 代码快照、回退、协作 |
 
@@ -99,7 +99,8 @@ GoldClaw/
 │   │   ├── __init__.py
 │   │   ├── connection.py            # SQLite 连接（WAL 模式）
 │   │   ├── migrations.py            # 建表/迁移
-│   │   └── repository.py            # 数据访问层（InvestorRepository + DashboardRepository）
+│   │   ├── repository.py            # 数据访问层（InvestorRepository + DashboardRepository）
+│   │   └── backup.py                # 数据库备份/恢复（WAL checkpoint + 文件复制 + 滚动保留）
 │   ├── exchange/                    # 通信层（信箱 + 门铃）
 │   │   ├── __init__.py
 │   │   ├── schema.py                # Pydantic Schema（信箱/门铃/指令）
@@ -238,6 +239,7 @@ except GoldClawError as e:
 | `price_ticks` | 金价 tick 历史（Dashboard 数据源） | INSERT Only |
 | `comm_log` | 通讯日志（所有方向的事件） | INSERT Only |
 | `runtime_config` | 运行时参数配置（Dashboard 可修改） | UPSERT |
+| `investor_snapshots` | 投资者资产快照（每 tick 记录，资产曲线数据源） | INSERT Only |
 
 详细字段定义见 PRD.md 第 7 节。
 

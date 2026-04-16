@@ -184,8 +184,13 @@ OpenClaw 是外部 LLM 系统，不在本项目开发范围内。双方的接口
 | F25 | 多币种支持 | 除 XAU 外支持白银、原油等 |
 | F26 | ~~投资者画像热更新~~ | ✅ v0.2.0 已完成（Dashboard 参数配置 + runtime_config 表） |
 | F27 | 交易报告生成 | 定期生成 PDF/HTML 交易报告 |
+| F28 | ~~数据库备份系统~~ | ✅ v0.4.0 已完成（自动启动/关闭备份 + 手动 Dashboard 备份 + 滚动保留 10 份） |
+| F29 | ~~中英文语言切换~~ | ✅ v0.4.0 已完成（Dashboard 中/英文一键切换，localStorage 持久化） |
+| F30 | ~~投资者资产曲线~~ | ✅ v0.4.0 已完成（A/B 双线折线图 + 决策标注 + 每 tick 快照） |
 
 > **前后端分离**: v0.2.0 已实现。Dashboard 前端（HTML/CSS/JS）通过 FastAPI REST API（`/api/*`）获取数据。引擎核心逻辑（盈亏计算、状态机）与 Dashboard 解耦，通过 `DashboardRepository` 数据访问层桥接。
+>
+> **v0.4.0 新增**: 数据库备份系统（自动启动/关闭 + 手动 Dashboard）、中英文语言切换、投资者 A/B 资产曲线图（含决策标注）、每 tick 资产快照记录。
 
 ---
 
@@ -609,6 +614,21 @@ CREATE TABLE comm_log (
     payload     TEXT DEFAULT '{}',
     created_at  TEXT NOT NULL
 );
+```
+
+#### 表 7: investor_snapshots（投资者资产快照 — 每 tick 记录）
+
+每个 tick 记录一次投资者 A/B 的总资产和持仓状态，用于 Dashboard 资产曲线图展示。
+
+```sql
+CREATE TABLE investor_snapshots (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    timestamp   TEXT NOT NULL,
+    investor_id TEXT NOT NULL,           -- "A" 或 "B"
+    total_assets REAL NOT NULL,          -- 总资产
+    action      TEXT NOT NULL DEFAULT 'idle'  -- 当前持仓动作
+);
+CREATE INDEX idx_snapshots_time ON investor_snapshots(timestamp);
 ```
 
 ### 7.2 信箱输出：Python → OpenClaw（状态文件）
@@ -1150,7 +1170,8 @@ GoldClaw/
 │   │   ├── __init__.py
 │   │   ├── connection.py            # SQLite 连接管理（WAL 模式）
 │   │   ├── migrations.py            # 建表/迁移
-│   │   └── repository.py            # 数据访问层（InvestorRepository + DashboardRepository）
+│   │   ├── repository.py            # 数据访问层（InvestorRepository + DashboardRepository）
+│   │   └── backup.py                # 数据库备份/恢复/滚动保留
 │   ├── exchange/                    # 通信层（信箱 + 门铃）
 │   │   ├── __init__.py
 │   │   ├── schema.py                # Pydantic Schema
@@ -1249,6 +1270,6 @@ GOLDCLAW_SGLN_GOLD_RATIO=3.215
 | v0.1 | 核心引擎：数据库+金价+盈亏+状态机+通信+引擎编排+95测试 | **已完成** |
 | v0.2 | 集成测试：25 个集成测试覆盖完整交易生命周期 | **已完成** |
 | v0.3 | OpenClaw 联调：23 步端到端验证全通过 + Bridge + Dashboard 骨架 | **已完成** |
-| v0.4 | Dashboard 完整 UI + 原生窗口 + DMG 打包 + 运行时参数配置 | **已完成** |
+| v0.4 | 数据库备份 + 中英文切换 + 投资者资产曲线 + 每 tick 快照 | **已完成** |
 | v0.5 | 指令过期检测 (F5) + 门铃后轮询 + 历史回测 | 待开发 |
 | v1.0 | 完整系统上线 | 待开发 |
