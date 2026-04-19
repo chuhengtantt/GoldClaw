@@ -239,7 +239,7 @@ except GoldClawError as e:
 | `price_ticks` | 金价 tick 历史（Dashboard 数据源） | INSERT Only |
 | `comm_log` | 通讯日志（所有方向的事件） | INSERT Only |
 | `runtime_config` | 运行时参数配置（Dashboard 可修改） | UPSERT |
-| `investor_snapshots` | 投资者资产快照（每 tick 记录，资产曲线数据源） | INSERT Only |
+| `investor_snapshots` | 投资者资产快照（每 tick 记录，后台归档；资产曲线用 trade_history） | INSERT Only |
 
 详细字段定义见 PRD.md 第 7 节。
 

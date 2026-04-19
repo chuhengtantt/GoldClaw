@@ -124,13 +124,22 @@ class DashboardRepository:
             ).fetchall()
         return rows, total
 
-    def get_asset_history(self, since: str | None = None) -> list[sqlite3.Row]:
-        """获取投资者资产历史，合并 snapshots + trade_history，按时间正序。"""
+    def get_asset_history(self, since: str | None = None, decisions_only: bool = False) -> list[sqlite3.Row]:
+        """获取投资者资产历史，按时间正序。decisions_only=True 只返回决策点（trade_history）。"""
         where = ""
         params: list[str] = []
         if since:
             where = " WHERE timestamp >= ?"
             params.append(since)
+
+        if decisions_only:
+            query = (
+                "SELECT investor_id, timestamp, total_assets_after as total_assets, action "
+                "FROM trade_history"
+                f"  {where}"
+                " ORDER BY timestamp ASC"
+            )
+            return self._conn.execute(query, params).fetchall()
 
         query = (
             "SELECT investor_id, timestamp, total_assets, action FROM ("

@@ -190,7 +190,7 @@ OpenClaw 是外部 LLM 系统，不在本项目开发范围内。双方的接口
 
 > **前后端分离**: v0.2.0 已实现。Dashboard 前端（HTML/CSS/JS）通过 FastAPI REST API（`/api/*`）获取数据。引擎核心逻辑（盈亏计算、状态机）与 Dashboard 解耦，通过 `DashboardRepository` 数据访问层桥接。
 >
-> **v0.4.0 新增**: 数据库备份系统（自动启动/关闭 + 手动 Dashboard）、中英文语言切换、投资者 A/B 资产曲线图（含决策标注）、每 tick 资产快照记录。
+> **v0.4.0 新增**: 数据库备份系统（自动启动/关闭 + 手动 Dashboard）、中英文语言切换、投资者 A/B 资产曲线图（仅展示决策点 + 标注）、每 tick 资产快照后台记录。
 
 ---
 
@@ -618,7 +618,7 @@ CREATE TABLE comm_log (
 
 #### 表 7: investor_snapshots（投资者资产快照 — 每 tick 记录）
 
-每个 tick 记录一次投资者 A/B 的总资产和持仓状态，用于 Dashboard 资产曲线图展示。
+每个 tick 记录一次投资者 A/B 的总资产和持仓状态。后台保留完整快照数据，Dashboard 资产曲线仅展示决策点（trade_history）。
 
 ```sql
 CREATE TABLE investor_snapshots (

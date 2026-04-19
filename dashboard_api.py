@@ -129,7 +129,7 @@ async def get_asset_history(range: str = Query("day", pattern="^(day|week|month)
         else:
             since = (now - timedelta(days=30)).isoformat()
 
-        rows = repo.get_asset_history(since=since)
+        rows = repo.get_asset_history(since=since, decisions_only=True)
         data: dict[str, list[dict]] = {"A": [], "B": []}
         for row in rows:
             inv_id = row["investor_id"]

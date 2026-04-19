@@ -58,14 +58,15 @@ GitHub Release: https://github.com/chuhengtantt/GoldClaw/releases/tag/v0.4.0
 - 语言切换按钮在 Header 右侧
 ### 切片 14: 投资者资产曲线图 ✅
 - A/B 双线折线图（紫色=A #8B5CF6，蓝色=B #3B82F6）
-- 决策标注点（LONG/SHORT/CLOSE/SGLN 标签）
+- 仅展示决策点（LONG/SHORT/CLOSE/SGLN 标签），不显示每 tick 数据
 - 日/周/月视图切换
 - Chart.js 自定义 plugin 绘制决策标签
-- 数据源：`investor_snapshots` + `trade_history` UNION 查询
+- 数据源：`trade_history`（`decisions_only=True`）
+- 后台仍每 tick 记录 `investor_snapshots`，图表不使用
 - API 端点：`GET /api/asset-history?range=day|week|month`
 ### 切片 15: 每 tick 资产快照 ✅
 - 新增 `investor_snapshots` 表（每 tick INSERT 投资者总资产 + 持仓动作）
-- `get_asset_history()` 合并 investor_snapshots + trade_history，按时间正序
+- 后台保留完整 tick 快照，Dashboard 仅展示决策点
 - Dashboard 布局改为左列上下结构：金价图（上）+ 资产曲线图（下）+ 右侧投资者卡片
 - 金价图与资产图之间可拖拽垂直 resize handle
 
