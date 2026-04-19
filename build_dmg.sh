@@ -7,7 +7,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-VERSION="0.4.0"
+VERSION="0.4.1"
 APP_NAME="GoldClaw"
 APP_DIR="dist/${APP_NAME}.app"
 DMG_DIR="dist/dmg_temp"
